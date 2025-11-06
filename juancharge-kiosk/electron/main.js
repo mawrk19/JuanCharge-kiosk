@@ -13,7 +13,9 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true
-    }
+    },
+    fullscreen: false,
+    autoHideMenuBar: true
   });
 
   // Load Vue (Vite dev or build)
