@@ -1,20 +1,50 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
+import PointsDisplay from './components/PointsDisplay.vue'
 
 const currentView = ref('home') // home, selectPort, confirmation
 const selectedPort = ref(null)
+const pointsDisplayRef = ref(null)
+
+// Ensure ref is available even when component is conditionally rendered
+onMounted(async () => {
+  await nextTick()
+  console.log('PointsDisplay ref available:', !!pointsDisplayRef.value)
+})
 
 function goToUseNow() {
   currentView.value = 'selectPort'
 }
 
 function goToStorePoint() {
-  // TODO: Implement store points functionality
-  alert('Store Points feature coming soon!')
+  // Reset points when Store Point button is clicked
+  if (pointsDisplayRef.value && pointsDisplayRef.value.resetPoints) {
+    pointsDisplayRef.value.resetPoints('store', null)
+  }
+  // Show confirmation or message
+  alert('Points have been reset to 0!')
 }
 
-function selectPort(portNumber) {
+async function selectPort(portNumber) {
   selectedPort.value = portNumber
+  
+  // Wait for next tick to ensure ref is available
+  await nextTick()
+  
+  // Reset points when a port is selected (do this BEFORE changing view)
+  if (pointsDisplayRef.value && pointsDisplayRef.value.resetPoints) {
+    console.log(`Resetting points for Port ${portNumber}`)
+    pointsDisplayRef.value.resetPoints('use', portNumber)
+  } else {
+    console.error('PointsDisplay ref not available!', pointsDisplayRef.value)
+    // Try again after a short delay
+    setTimeout(() => {
+      if (pointsDisplayRef.value && pointsDisplayRef.value.resetPoints) {
+        pointsDisplayRef.value.resetPoints('use', portNumber)
+      }
+    }, 100)
+  }
+  
   currentView.value = 'confirmation'
   
   // Auto-reset to home after 3 seconds
@@ -34,6 +64,7 @@ function resetToHome() {
     <!-- Home View: Use Now or Store Point -->
     <div v-if="currentView === 'home'" class="home-view">
       <h1 class="title">JuanCharge Kiosk</h1>
+      <PointsDisplay ref="pointsDisplayRef" />
       <div class="button-container">
         <button class="kiosk-button primary" @click="goToUseNow">
           Use Now
@@ -43,6 +74,9 @@ function resetToHome() {
         </button>
       </div>
     </div>
+    
+    <!-- Hidden PointsDisplay for ref access in other views -->
+    <PointsDisplay v-else ref="pointsDisplayRef" class="points-hidden" />
 
     <!-- Select Port View -->
     <div v-if="currentView === 'selectPort'" class="select-port-view">
@@ -210,6 +244,16 @@ function resetToHome() {
   to {
     transform: scale(1);
   }
+}
+
+.points-hidden {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
 }
 
 /* Portrait orientation optimization */
