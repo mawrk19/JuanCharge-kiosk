@@ -1,0 +1,318 @@
+{
+  "transactions": [
+    {
+      "id": "1762534557414",
+      "action": "initial",
+      "port": null,
+      "startTime": "2025-11-07T16:55:57.414Z",
+      "endTime": "2025-11-07T16:56:38.727Z",
+      "usedItems": [
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 0,
+          "date": "2025-11-08 00:55:56",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 1,
+          "date": "2025-11-08 00:56:09",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 2,
+          "date": "2025-11-08 00:56:30",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 3,
+          "date": "2025-11-08 00:56:36",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        }
+      ],
+      "totalPoints": 4
+    },
+    {
+      "id": "1762534598727",
+      "action": "store",
+      "port": null,
+      "startTime": "2025-11-07T16:56:38.727Z",
+      "endTime": "2025-11-07T17:00:25.775Z",
+      "usedItems": [
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 0,
+          "date": "2025-11-08 00:55:56",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 1,
+          "date": "2025-11-08 00:56:09",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 2,
+          "date": "2025-11-08 00:56:30",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 3,
+          "date": "2025-11-08 00:56:36",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 4,
+          "date": "2025-11-08 00:56:57",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 5,
+          "date": "2025-11-08 00:57:01",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 6,
+          "date": "2025-11-08 00:57:15",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 7,
+          "date": "2025-11-08 00:58:08",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 8,
+          "date": "2025-11-08 01:00:04",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        }
+      ],
+      "totalPoints": 5
+    },
+    {
+      "id": "1762534825775",
+      "action": "use",
+      "port": null,
+      "startTime": "2025-11-07T17:00:25.775Z",
+      "endTime": "2025-11-07T17:03:54.247Z",
+      "usedItems": [
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 0,
+          "date": "2025-11-08 00:55:56",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 1,
+          "date": "2025-11-08 00:56:09",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 2,
+          "date": "2025-11-08 00:56:30",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 3,
+          "date": "2025-11-08 00:56:36",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 4,
+          "date": "2025-11-08 00:56:57",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 5,
+          "date": "2025-11-08 00:57:01",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 6,
+          "date": "2025-11-08 00:57:15",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 7,
+          "date": "2025-11-08 00:58:08",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 8,
+          "date": "2025-11-08 01:00:04",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 9,
+          "date": "2025-11-08 01:02:23",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 10,
+          "date": "2025-11-08 01:02:30",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 11,
+          "date": "2025-11-08 01:02:56",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 12,
+          "date": "2025-11-08 01:03:51",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        }
+      ],
+      "totalPoints": 4
+    },
+    {
+      "id": "1762535034247",
+      "action": "store",
+      "port": null,
+      "startTime": "2025-11-07T17:03:54.247Z",
+      "endTime": null,
+      "usedItems": [
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 0,
+          "date": "2025-11-08 00:55:56",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 1,
+          "date": "2025-11-08 00:56:09",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 2,
+          "date": "2025-11-08 00:56:30",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 3,
+          "date": "2025-11-08 00:56:36",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 4,
+          "date": "2025-11-08 00:56:57",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 5,
+          "date": "2025-11-08 00:57:01",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 6,
+          "date": "2025-11-08 00:57:15",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 7,
+          "date": "2025-11-08 00:58:08",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 8,
+          "date": "2025-11-08 01:00:04",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 9,
+          "date": "2025-11-08 01:02:23",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 10,
+          "date": "2025-11-08 01:02:30",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 11,
+          "date": "2025-11-08 01:02:56",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        },
+        {
+          "fileName": "tracked_items_2025-11-08.json",
+          "index": 12,
+          "date": "2025-11-08 01:03:51",
+          "itemType": "Pet/plastic battles",
+          "points": 1
+        }
+      ],
+      "totalPoints": 0
+    }
+  ],
+  "currentTransactionId": "1762535034247"
+}
