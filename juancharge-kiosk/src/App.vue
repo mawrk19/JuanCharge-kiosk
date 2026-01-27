@@ -1,10 +1,13 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import PointsDisplay from './components/PointsDisplay.vue'
+import StorePointView from './components/StorePointView.vue'
 
-const currentView = ref('home') // home, selectPort, confirmation
+const currentView = ref('home') // home, selectPort, confirmation, storePoint
 const selectedPort = ref(null)
 const pointsDisplayRef = ref(null)
+const storedQrData = ref('')
+const storedPoints = ref(0)
 
 // Ensure ref is available even when component is conditionally rendered
 onMounted(async () => {
@@ -16,13 +19,22 @@ function goToUseNow() {
   currentView.value = 'selectPort'
 }
 
-function goToStorePoint() {
+async function goToStorePoint() {
   // Reset points when Store Point button is clicked
   if (pointsDisplayRef.value && pointsDisplayRef.value.resetPoints) {
-    pointsDisplayRef.value.resetPoints('store', null)
+    const result = await pointsDisplayRef.value.resetPoints('store', null)
+    
+    if (result && result.qrData && result.storedPoints > 0) {
+      storedQrData.value = result.qrData
+      storedPoints.value = result.storedPoints
+      currentView.value = 'storePoint'
+    } else {
+      // Fallback or 0 points
+      alert('Points have been reset to 0! (No points to store)')
+    }
+  } else {
+    alert('System error: Points display not ready')
   }
-  // Show confirmation or message
-  alert('Points have been reset to 0!')
 }
 
 async function selectPort(portNumber) {
@@ -56,6 +68,8 @@ async function selectPort(portNumber) {
 function resetToHome() {
   currentView.value = 'home'
   selectedPort.value = null
+  storedQrData.value = ''
+  storedPoints.value = 0
 }
 </script>
 
@@ -102,6 +116,15 @@ function resetToHome() {
         <h1 class="confirmation-title">Port {{ selectedPort }} is available for charging</h1>
         <p class="confirmation-subtitle">Thank you!</p>
       </div>
+    </div>
+
+    <!-- Store Point View -->
+    <div v-if="currentView === 'storePoint'" class="store-point-container">
+      <StorePointView 
+        :qrData="storedQrData" 
+        :points="storedPoints" 
+        @done="resetToHome" 
+      />
     </div>
   </div>
 </template>
@@ -194,7 +217,7 @@ function resetToHome() {
   transform: translateX(-5px);
 }
 
-.confirmation-view {
+.confirmation-view, .store-point-container {
   width: 100%;
   height: 100%;
   display: flex;

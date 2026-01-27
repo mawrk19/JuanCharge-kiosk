@@ -74,7 +74,9 @@ async function resetPoints(action = 'store', port = null) {
       if (result.success) {
         // Immediately fetch to show 0 (no new data yet)
         await fetchPoints()
+        return result
       }
+      return result
     }
     
     console.log('Points reset to 0, new transaction created')
