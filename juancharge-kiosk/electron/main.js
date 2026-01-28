@@ -65,8 +65,8 @@ function createWindow() {
   const preloadPath = path.resolve(__dirname, 'preload.js');
   
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 800,
+    height: 480,
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
@@ -74,7 +74,7 @@ function createWindow() {
       webSecurity: false,
       enableRemoteModule: false
     },
-    fullscreen: false,
+    fullscreen: true,
     autoHideMenuBar: true
   });
 
