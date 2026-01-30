@@ -42,6 +42,23 @@ const relayStates = {
   3: { active: false, timer: null, remainingSeconds: 0, totalSeconds: 0, startTime: null }
 };
 
+// Event callback for status changes
+let statusChangeCallback = null;
+
+// Set callback for status change events
+export const setStatusChangeCallback = (callback) => {
+  statusChangeCallback = callback;
+  console.log('[RELAY] Status change callback registered');
+};
+
+// Emit status change event
+const emitStatusChange = () => {
+  if (statusChangeCallback) {
+    const statuses = getAllRelayStatuses();
+    statusChangeCallback(statuses);
+  }
+};
+
 let Gpio = null;
 let relayGpios = {};
 
@@ -126,6 +143,9 @@ export const activateRelay = async (port, durationSeconds) => {
   
   relayStates[port].timer = { shutoff: shutoffTimer, countdown: countdownInterval };
   
+  // Emit status change event
+  emitStatusChange();
+  
   return {
     success: true,
     port,
@@ -176,6 +196,9 @@ export const deactivateRelay = (port, isAutoShutoff = false) => {
   relayStates[port].remainingSeconds = 0;
   relayStates[port].totalSeconds = 0;
   relayStates[port].startTime = null;
+  
+  // Emit status change event
+  emitStatusChange();
   
   return { success: true, port };
 };

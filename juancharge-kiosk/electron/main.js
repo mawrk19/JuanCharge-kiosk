@@ -9,6 +9,9 @@ import * as relayController from './relay_controller.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Global reference to main window for event emission
+let mainWindow = null;
+
 // Initialize Database
 const userDataPath = app.getPath('userData');
 const dbPath = path.join(userDataPath, 'juancharge.db');
@@ -73,6 +76,11 @@ db.exec(`
   );
 `);
 
+// Register relay status change callback
+relayController.setStatusChangeCallback((statuses) => {
+  emitToRenderer('charging-status-changed', { statuses });
+});
+
 function createWindow() {
   const preloadPath = path.resolve(__dirname, 'preload.js');
   
@@ -89,6 +97,9 @@ function createWindow() {
     fullscreen: true,
     autoHideMenuBar: true
   });
+
+  // Store window reference for event emission
+  mainWindow = win;
 
   // win.webContents.openDevTools();
   win.loadURL('http://localhost:5173');
@@ -371,6 +382,120 @@ ipcMain.handle('redeem-points', async (event, { userId, points, timestamp }) => 
   }
 });
 
+// ============================================
+// FILE WATCHER FOR LIVE UPDATES
+// ============================================
+
+let fileWatcher = null;
+let watcherDebounceTimer = null;
+
+// Helper to emit events to renderer
+function emitToRenderer(channel, data) {
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send(channel, data);
+    console.log(`[EVENT] Emitted ${channel}:`, data);
+  }
+}
+
+// Function to check for new points and emit event
+async function checkAndEmitPointsUpdate() {
+  try {
+    const projectRoot = path.resolve(__dirname, '..');
+    const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
+    
+    if (!fs.existsSync(trackedJsonPath)) {
+      return;
+    }
+    
+    // Get active transaction or create one
+    let txn = getActiveTransaction();
+    if (!txn) {
+      const id = createTransaction();
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+    }
+    
+    const oldPoints = txn.total_points;
+    
+    // Read JSON files
+    const files = fs.readdirSync(trackedJsonPath)
+      .filter(file => file.startsWith('tracked_items_') && file.endsWith('.json'));
+
+    let newPointsAdded = 0;
+    
+    for (const file of files) {
+      const filePath = path.join(trackedJsonPath, file);
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const items = JSON.parse(content);
+        
+        items.forEach((item, index) => {
+          const exists = db.prepare('SELECT 1 FROM transaction_items WHERE file_name = ? AND file_index = ?').get(file, index);
+          
+          if (!exists) {
+            const points = item.points || 0;
+            newPointsAdded += points;
+            
+            db.prepare('INSERT INTO transaction_items (transaction_id, file_name, file_index, item_type, points, date) VALUES (?, ?, ?, ?, ?, ?)')
+              .run(txn.id, file, index, item.item_type || 'unknown', points, item.date || new Date().toISOString());
+          }
+        });
+      } catch (err) {
+        console.error(`Error reading ${file}:`, err);
+      }
+    }
+    
+    if (newPointsAdded > 0) {
+      db.prepare('UPDATE transactions SET total_points = total_points + ? WHERE id = ?')
+        .run(newPointsAdded, txn.id);
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txn.id);
+      
+      // Emit event to frontend
+      emitToRenderer('points-updated', {
+        points: txn.total_points,
+        pointsAdded: newPointsAdded,
+        transactionId: txn.id
+      });
+      
+      console.log(`[POINTS UPDATE] +${newPointsAdded} points added. Total: ${txn.total_points}`);
+    }
+  } catch (error) {
+    console.error('Error checking points update:', error);
+  }
+}
+
+// Initialize file watcher
+function initializeFileWatcher() {
+  const projectRoot = path.resolve(__dirname, '..');
+  const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
+  
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(trackedJsonPath)) {
+    fs.mkdirSync(trackedJsonPath, { recursive: true });
+  }
+  
+  try {
+    // Watch for changes in Tracked_json folder
+    fileWatcher = fs.watch(trackedJsonPath, { recursive: false }, (eventType, filename) => {
+      if (filename && filename.startsWith('tracked_items_') && filename.endsWith('.json')) {
+        console.log(`[FILE WATCHER] Detected ${eventType} on ${filename}`);
+        
+        // Debounce to avoid multiple rapid checks
+        if (watcherDebounceTimer) {
+          clearTimeout(watcherDebounceTimer);
+        }
+        
+        watcherDebounceTimer = setTimeout(() => {
+          checkAndEmitPointsUpdate();
+        }, 500); // Wait 500ms after last change
+      }
+    });
+    
+    console.log('[FILE WATCHER] Initialized for Tracked_json folder');
+  } catch (error) {
+    console.error('[FILE WATCHER] Failed to initialize:', error);
+  }
+}
+
 // Sync Job (Run periodically)
 setInterval(async () => {
     // Check if we have unsynced vouchers
@@ -417,9 +542,19 @@ setInterval(async () => {
     }
 }, 60000); // Check every minute
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  // Initialize file watcher after window is created
+  initializeFileWatcher();
+});
 
 app.on('window-all-closed', () => {
+  // Cleanup file watcher
+  if (fileWatcher) {
+    fileWatcher.close();
+    console.log('[FILE WATCHER] Closed');
+  }
+  
   // Cleanup relays before quitting
   relayController.cleanup();
   if (process.platform !== 'darwin') app.quit();

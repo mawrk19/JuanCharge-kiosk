@@ -120,6 +120,18 @@ onMounted(() => {
   console.log('typeof window.electronAPI:', typeof window.electronAPI);
   if (window.electronAPI) {
     console.log('electronAPI.invoke:', typeof window.electronAPI.invoke);
+    console.log('electronAPI.on:', typeof window.electronAPI.on);
+  }
+  
+  // Register event listener for real-time points updates
+  if (window.electronAPI && typeof window.electronAPI.on === 'function') {
+    window.electronAPI.on('points-updated', (data) => {
+      console.log('[POINTS EVENT] Received points update:', data);
+      points.value = data.points;
+      loading.value = false;
+      error.value = null;
+    });
+    console.log('✅ Registered points-updated event listener');
   }
   
   // Wait a bit for Electron API to be ready (max 5 seconds)
@@ -130,10 +142,10 @@ onMounted(() => {
     if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
       console.log('✅ Electron API detected, fetching points...')
       fetchPoints()
-      // Refresh points every 5 seconds to check for new data
+      // Reduced polling to 30 seconds as fallback (events handle real-time updates)
       fetchInterval = setInterval(() => {
         fetchPoints()
-      }, 5000)
+      }, 30000)
     } else if (retries < maxRetries) {
       retries++
       if (retries % 10 === 0) { // Log every 10 attempts

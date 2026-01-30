@@ -39,9 +39,21 @@ onMounted(async () => {
   await nextTick()
   console.log('PointsDisplay ref available:', !!pointsDisplayRef.value)
   
-  // Start polling port statuses every 2 seconds
+  // Register event listener for real-time charging status updates
+  if (window.electronAPI && typeof window.electronAPI.on === 'function') {
+    window.electronAPI.on('charging-status-changed', (data) => {
+      console.log('[CHARGING EVENT] Received status update:', data);
+      if (data && data.statuses) {
+        portStatuses.value = data.statuses;
+      }
+    });
+    console.log('✅ Registered charging-status-changed event listener');
+  }
+  
+  // Initial status fetch
   updatePortStatuses()
-  statusInterval = setInterval(updatePortStatuses, 2000)
+  // Reduced polling to 10 seconds as fallback (events handle real-time updates)
+  statusInterval = setInterval(updatePortStatuses, 10000)
 })
 
 onUnmounted(() => {
