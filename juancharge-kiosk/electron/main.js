@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
+import * as relayController from './relay_controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +59,17 @@ db.exec(`
     signature TEXT,
     status TEXT DEFAULT 'generated', 
     created_at TEXT
+  );
+  
+  CREATE TABLE IF NOT EXISTS charging_sessions (
+    id TEXT PRIMARY KEY,
+    port INTEGER NOT NULL,
+    points INTEGER NOT NULL,
+    duration_seconds INTEGER NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT,
+    status TEXT DEFAULT 'active',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 `);
 
@@ -224,6 +236,141 @@ ipcMain.handle('reset-points', async (event, action = 'store', port = null) => {
   }
 });
 
+// IPC handler to activate charging
+ipcMain.handle('activate-charging', async (event, { port, points }) => {
+  try {
+    // Validate input
+    if (!port || ![1, 2, 3].includes(port)) {
+      return { success: false, error: 'Invalid port number' };
+    }
+    
+    if (!points || points <= 0) {
+      return { success: false, error: 'Invalid points amount' };
+    }
+    
+    // Check if port is already in use
+    const portStatus = relayController.getRelayStatus(port);
+    if (portStatus.active) {
+      return { success: false, error: `Port ${port} is already in use` };
+    }
+    
+    // Convert points to seconds (1 point = 60 seconds)
+    const durationSeconds = points * 60;
+    
+    // Activate relay
+    const result = await relayController.activateRelay(port, durationSeconds);
+    
+    if (!result.success) {
+      return result;
+    }
+    
+    // Create charging session record
+    const sessionId = Date.now().toString();
+    db.prepare(`
+      INSERT INTO charging_sessions (id, port, points, duration_seconds, start_time, end_time, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'active')
+    `).run(sessionId, port, points, durationSeconds, new Date().toISOString(), result.endTime);
+    
+    // Deduct points from active transaction
+    const txn = getActiveTransaction();
+    if (txn) {
+      db.prepare('UPDATE transactions SET total_points = total_points - ? WHERE id = ?')
+        .run(points, txn.id);
+    }
+    
+    return {
+      success: true,
+      sessionId,
+      port,
+      points,
+      durationSeconds,
+      endTime: result.endTime
+    };
+  } catch (error) {
+    console.error('Error activating charging:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to get charging status for all ports
+ipcMain.handle('get-charging-status', async () => {
+  try {
+    const statuses = relayController.getAllRelayStatuses();
+    return { success: true, statuses };
+  } catch (error) {
+    console.error('Error getting charging status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler for QR-based redemption
+ipcMain.handle('redeem-points', async (event, { userId, points, timestamp }) => {
+  try {
+    // Validate input
+    if (!userId || !points || !timestamp) {
+      return { success: false, error: 'Invalid redemption data' };
+    }
+    if (points <= 0) {
+      return { success: false, error: 'Points must be greater than 0' };
+    }
+    
+    const redemptionId = Date.now().toString();
+    const projectRoot = path.resolve(__dirname, '..');
+    const redemptionsFile = path.join(projectRoot, 'redemptions.json');
+    
+    // Create redemption record for JSON file
+    const redemptionRecord = {
+      id: redemptionId,
+      userId: userId,
+      points: points,
+      timestamp: new Date(timestamp).toISOString(),
+      redeemedAt: new Date().toISOString()
+    };
+    
+    // Read existing redemptions or create new array
+    let redemptions = [];
+    if (fs.existsSync(redemptionsFile)) {
+      try {
+        const fileContent = fs.readFileSync(redemptionsFile, 'utf-8');
+        redemptions = JSON.parse(fileContent);
+      } catch (err) {
+        console.error('Error reading redemptions.json:', err);
+        redemptions = [];
+      }
+    }
+    
+    // Add new redemption
+    redemptions.push(redemptionRecord);
+    
+    // Save to JSON file
+    fs.writeFileSync(redemptionsFile, JSON.stringify(redemptions, null, 2));
+    console.log('Redemption saved to redemptions.json:', redemptionRecord);
+    
+    // Add points to active transaction
+    let txn = getActiveTransaction();
+    if (!txn) {
+      const id = createTransaction('redeem');
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+    }
+    
+    db.prepare('UPDATE transactions SET total_points = total_points + ? WHERE id = ?')
+      .run(points, txn.id);
+    
+    // Get updated points
+    txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txn.id);
+    
+    return {
+      success: true,
+      redemptionId,
+      newBalance: txn.total_points,
+      pointsAdded: points
+    };
+  } catch (error) {
+    console.error('Error redeeming points:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Sync Job (Run periodically)
 setInterval(async () => {
     // Check if we have unsynced vouchers
@@ -273,5 +420,7 @@ setInterval(async () => {
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
+  // Cleanup relays before quitting
+  relayController.cleanup();
   if (process.platform !== 'darwin') app.quit();
 });

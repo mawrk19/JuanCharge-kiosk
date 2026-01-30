@@ -85,9 +85,31 @@ async function resetPoints(action = 'store', port = null) {
   }
 }
 
-// Expose reset function to parent component
+// Helper to convert points to time display
+function convertPointsToTime(pts) {
+  const seconds = pts * 60
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  }
+  return `${minutes} min`
+}
+
+// Refresh points manually
+async function refreshPoints() {
+  console.log('Refreshing points...')
+  await fetchPoints()
+}
+
+// Expose methods and reactive points to parent component
 defineExpose({
-  resetPoints
+  resetPoints,
+  refreshPoints,
+  get points() {
+    return points.value
+  }
 })
 
 onMounted(() => {
@@ -142,6 +164,9 @@ onMounted(() => {
       <div v-else-if="error" class="points-value error">{{ error }}</div>
       <div v-else>
         <div class="points-value">{{ points }}</div>
+        <div v-if="points > 0" class="points-time">
+          ≈ {{ convertPointsToTime(points) }} charging time
+        </div>
       </div>
     </div>
   </div>
@@ -190,5 +215,13 @@ onMounted(() => {
   font-size: 1.2rem;
   margin-top: 10px;
   font-weight: normal;
+}
+
+.points-time {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.5rem;
+  margin-top: 10px;
+  font-weight: 500;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 </style>
