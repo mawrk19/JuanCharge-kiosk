@@ -81,27 +81,27 @@ onUnmounted(() => {
     <div class="progress-container">
       <!-- Circular Progress -->
       <div class="circular-progress">
-        <svg class="progress-ring" width="300" height="300">
+        <svg class="progress-ring" width="200" height="200">
           <circle
             class="progress-ring-bg"
             stroke="#e0e0e0"
-            stroke-width="20"
+            stroke-width="15"
             fill="transparent"
-            r="130"
-            cx="150"
-            cy="150"
+            r="85"
+            cx="100"
+            cy="100"
           />
           <circle
             class="progress-ring-circle"
             :stroke="isComplete ? '#38ef7d' : '#11998e'"
-            stroke-width="20"
+            stroke-width="15"
             fill="transparent"
-            r="130"
-            cx="150"
-            cy="150"
+            r="85"
+            cx="100"
+            cy="100"
             :style="{
-              strokeDasharray: `${2 * Math.PI * 130}`,
-              strokeDashoffset: `${2 * Math.PI * 130 * (1 - progressPercentage / 100)}`
+              strokeDasharray: `${2 * Math.PI * 85}`,
+              strokeDashoffset: `${2 * Math.PI * 85 * (1 - progressPercentage / 100)}`
             }"
           />
         </svg>
@@ -144,9 +144,9 @@ onUnmounted(() => {
 
 .circular-progress {
   position: relative;
-  width: 300px;
-  height: 300px;
-  margin: 0 auto 40px;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 20px;
 }
 
 .progress-ring {
@@ -166,34 +166,34 @@ onUnmounted(() => {
 }
 
 .time-display {
-  font-size: 4rem;
+  font-size: 2.5rem;
   font-weight: bold;
   color: white;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .complete-icon {
-  font-size: 6rem;
+  font-size: 4rem;
   color: #38ef7d;
   animation: scaleIn 0.5s ease-out;
 }
 
 .port-label {
-  font-size: 1.5rem;
+  font-size: 1rem;
   color: white;
   font-weight: 600;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .status-message {
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .status-title {
   color: white;
-  font-size: 3rem;
-  margin-bottom: 15px;
+  font-size: 1.8rem;
+  margin-bottom: 8px;
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
@@ -204,7 +204,7 @@ onUnmounted(() => {
 
 .status-subtitle {
   color: white;
-  font-size: 1.8rem;
+  font-size: 1.2rem;
   font-weight: 300;
 }
 

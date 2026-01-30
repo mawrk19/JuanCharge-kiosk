@@ -102,27 +102,28 @@ const goBack = () => {
     <div class="content-container">
       <!-- QR Code Display -->
       <div v-if="!testMode" class="qr-section">
-        <div class="qr-container" @click="handleQrTap">
-          <QrcodeVue 
-            :value="qrCodeValue" 
-            :size="300" 
-            level="H"
-            render-as="svg"
-            class="qr-code"
-          />
+        <div class="qr-content">
+          <div class="qr-container" @click="handleQrTap">
+            <QrcodeVue 
+              :value="qrCodeValue" 
+              :size="200" 
+              level="H"
+              render-as="svg"
+              class="qr-code"
+            />
+          </div>
+          
+          <div class="instructions">
+            <h2 class="instruction-title">How to Redeem:</h2>
+            <ol class="instruction-list">
+              <li>Open your JuanCharge mobile app</li>
+              <li>Scan this QR code</li>
+              <li>Select the amount of points to transfer</li>
+              <li>Confirm the transfer</li>
+            </ol>
+            <p class="test-hint">💡 Triple-tap QR for test mode</p>
+          </div>
         </div>
-        
-        <div class="instructions">
-          <h2 class="instruction-title">How to Redeem:</h2>
-          <ol class="instruction-list">
-            <li>Open your JuanCharge mobile app</li>
-            <li>Scan this QR code</li>
-            <li>Select the amount of points to transfer</li>
-            <li>Confirm the transfer</li>
-          </ol>
-        </div>
-        
-        <p class="test-hint">💡 Triple-tap QR code for test mode</p>
       </div>
       
       <!-- Test Mode: Manual Redemption -->
@@ -188,14 +189,14 @@ const goBack = () => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 40px;
+  padding: 10px;
   animation: fadeIn 0.5s ease-in;
 }
 
 .title {
   color: white;
-  font-size: 4rem;
-  margin-bottom: 40px;
+  font-size: 3rem;
+  margin-bottom: 10px;
   text-align: center;
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
@@ -203,24 +204,30 @@ const goBack = () => {
 
 .content-container {
   background: white;
-  border-radius: 20px;
-  padding: 50px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  max-width: 800px;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
   width: 100%;
 }
 
 .qr-section {
-  text-align: center;
+  width: 100%;
+}
+
+.qr-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
 }
 
 .qr-container {
   background: white;
-  padding: 30px;
-  border-radius: 15px;
-  display: inline-block;
-  margin-bottom: 30px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .qr-code {
@@ -228,33 +235,35 @@ const goBack = () => {
 }
 
 .instructions {
-  margin-bottom: 30px;
+  flex: 1;
   text-align: left;
 }
 
 .instruction-title {
   color: #11998e;
-  font-size: 2rem;
-  margin-bottom: 15px;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
   font-weight: bold;
 }
 
 .instruction-list {
   color: #333;
-  font-size: 1.5rem;
-  line-height: 2;
-  padding-left: 30px;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding-left: 20px;
+  margin: 0;
 }
 
 .instruction-list li {
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .test-hint {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 1rem;
-  margin-top: 20px;
+  color: #999;
+  font-size: 0.7rem;
+  margin-top: 10px;
   font-style: italic;
+  text-align: center;
 }
 
 .qr-container {
@@ -270,38 +279,38 @@ const goBack = () => {
 .test-badge {
   background: #ff9800;
   color: white;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 1.2rem;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 0.9rem;
   font-weight: bold;
   display: inline-block;
-  margin-bottom: 30px;
+  margin-bottom: 15px;
 }
 
 .form-container {
-  max-width: 500px;
+  max-width: 400px;
   margin: 0 auto;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   text-align: left;
 }
 
 .form-label {
   display: block;
   color: #333;
-  font-size: 1.3rem;
+  font-size: 1rem;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .form-input {
   width: 100%;
-  font-size: 1.5rem;
-  padding: 15px 20px;
+  font-size: 1.1rem;
+  padding: 10px 15px;
   border: 2px solid #e0e0e0;
-  border-radius: 10px;
+  border-radius: 8px;
   transition: border-color 0.3s ease;
   box-sizing: border-box;
 }
@@ -319,36 +328,36 @@ const goBack = () => {
 .error-message {
   background: #ffebee;
   color: #c62828;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  margin-bottom: 15px;
-  border-left: 4px solid #c62828;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  border-left: 3px solid #c62828;
 }
 
 .success-message {
   background: #e8f5e9;
   color: #2e7d32;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  margin-bottom: 15px;
-  border-left: 4px solid #2e7d32;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  border-left: 3px solid #2e7d32;
 }
 
 .button-group {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .quick-test-button,
 .redeem-button {
   flex: 1;
-  font-size: 1.3rem;
-  padding: 15px 20px;
+  font-size: 1rem;
+  padding: 12px 15px;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: 600;
@@ -361,7 +370,7 @@ const goBack = () => {
 
 .quick-test-button:hover:not(:disabled) {
   background: #f57c00;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .redeem-button {
@@ -371,7 +380,7 @@ const goBack = () => {
 
 .redeem-button:hover:not(:disabled) {
   background: #0d7a6e;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .redeem-button:disabled,
@@ -383,12 +392,12 @@ const goBack = () => {
 
 .exit-test-button {
   width: 100%;
-  font-size: 1.2rem;
-  padding: 12px 20px;
+  font-size: 0.9rem;
+  padding: 10px 15px;
   background: #f5f5f5;
   color: #333;
   border: 2px solid #e0e0e0;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: 600;
@@ -399,13 +408,13 @@ const goBack = () => {
 }
 
 .back-button {
-  margin-top: 30px;
-  font-size: 1.8rem;
-  padding: 20px 40px;
+  margin-top: 8px;
+  font-size: 1rem;
+  padding: 10px 20px;
   background: rgba(255, 255, 255, 0.9);
   color: #11998e;
   border: 2px solid white;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: bold;
@@ -413,7 +422,7 @@ const goBack = () => {
 
 .back-button:hover {
   background: white;
-  transform: translateX(-5px);
+  transform: translateX(-3px);
 }
 
 @keyframes fadeIn {

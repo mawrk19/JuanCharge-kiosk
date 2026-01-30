@@ -132,6 +132,8 @@ export const activateRelay = async (port, durationSeconds) => {
   const countdownInterval = setInterval(() => {
     if (relayStates[port].remainingSeconds > 0) {
       relayStates[port].remainingSeconds--;
+      // Emit status change event for live UI updates
+      emitStatusChange();
     }
   }, 1000);
   

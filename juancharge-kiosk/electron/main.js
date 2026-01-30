@@ -94,7 +94,7 @@ function createWindow() {
       webSecurity: false,
       enableRemoteModule: false
     },
-    fullscreen: true,
+    fullscreen: false,
     autoHideMenuBar: true
   });
 

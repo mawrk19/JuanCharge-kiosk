@@ -20,7 +20,7 @@ const canvasRef = ref(null)
 onMounted(() => {
   if (canvasRef.value && props.qrData) {
     QRCode.toCanvas(canvasRef.value, props.qrData, { 
-      width: 300,
+      width: 150,
       margin: 2,
       color: {
         dark: '#000000',
@@ -53,52 +53,54 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   height: 100%;
   color: white;
   animation: fadeIn 0.5s ease-out;
+  overflow-y: auto;
+  padding: 10px;
 }
 
 .title {
-  font-size: 3rem;
-  margin-bottom: 30px;
+  font-size: 1.5rem;
+  margin-bottom: 10px;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
 .qr-container {
   background: white;
-  padding: 20px;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  margin-bottom: 30px;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  margin-bottom: 10px;
 }
 
 .points-info {
-  font-size: 2.5rem;
-  margin-bottom: 20px;
+  font-size: 1.3rem;
+  margin-bottom: 8px;
 }
 
 .highlight {
   font-weight: bold;
   color: #ffeb3b;
-  font-size: 3.5rem;
+  font-size: 1.8rem;
 }
 
 .instruction {
-  font-size: 1.5rem;
-  margin-bottom: 40px;
+  font-size: 0.85rem;
+  margin-bottom: 15px;
   opacity: 0.9;
-  max-width: 600px;
+  max-width: 500px;
   text-align: center;
 }
 
 .done-button {
-  font-size: 2rem;
-  padding: 20px 60px;
+  font-size: 1.1rem;
+  padding: 12px 35px;
   background: white;
   color: #11998e;
   border: none;
-  border-radius: 50px;
+  border-radius: 25px;
   cursor: pointer;
   font-weight: bold;
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);

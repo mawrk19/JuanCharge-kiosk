@@ -313,14 +313,14 @@ function isPortDisabled(portNumber) {
   justify-content: center;
   align-items: center;
   background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-  padding: 40px;
+  padding: 15px;
   box-sizing: border-box;
 }
 
 .title {
   color: white;
-  font-size: 4rem;
-  margin-bottom: 60px;
+  font-size: 2rem;
+  margin-bottom: 20px;
   text-align: center;
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
@@ -336,17 +336,17 @@ function isPortDisabled(portNumber) {
 
 .active-ports-status {
   background: rgba(255, 255, 255, 0.15);
-  padding: 20px;
-  border-radius: 15px;
-  margin: 20px 0;
+  padding: 10px;
+  border-radius: 10px;
+  margin: 10px 0;
   backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.25);
 }
 
 .status-title {
   color: white;
-  font-size: 1.8rem;
-  margin: 0 0 15px 0;
+  font-size: 1rem;
+  margin: 0 0 8px 0;
   font-weight: 600;
 }
 
@@ -361,20 +361,20 @@ function isPortDisabled(portNumber) {
   justify-content: space-between;
   align-items: center;
   background: rgba(76, 175, 80, 0.3);
-  padding: 12px 20px;
-  border-radius: 10px;
-  border-left: 4px solid #4caf50;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border-left: 3px solid #4caf50;
 }
 
 .port-label {
   color: white;
-  font-size: 1.5rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .time-remaining {
   color: rgba(255, 255, 255, 0.95);
-  font-size: 1.3rem;
+  font-size: 0.85rem;
   font-weight: 500;
 }
 
@@ -391,38 +391,38 @@ function isPortDisabled(portNumber) {
 .button-container {
   display: flex;
   flex-direction: row;
-  gap: 30px;
+  gap: 10px;
   width: 100%;
-  max-width: 1400px;
+  max-width: 800px;
 }
 
 .kiosk-button {
-  font-size: 3rem;
-  padding: 80px 100px;
+  font-size: 1.5rem;
+  padding: 30px 20px;
   border: none;
-  border-radius: 20px;
+  border-radius: 12px;
   cursor: pointer;
   font-weight: bold;
   transition: all 0.3s ease;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   flex: 1;
 }
 
 .kiosk-button:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .kiosk-button:active {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .kiosk-button.primary {
   background: white;
   color: #11998e;
-  border: 4px solid #11998e;
+  border: 3px solid #11998e;
 }
 
 .kiosk-button.secondary {
@@ -475,13 +475,13 @@ function isPortDisabled(portNumber) {
 }
 
 .back-button {
-  margin-top: 40px;
-  font-size: 1.8rem;
-  padding: 20px 40px;
+  margin-top: 15px;
+  font-size: 1.2rem;
+  padding: 12px 25px;
   background: rgba(255, 255, 255, 0.9);
   color: #11998e;
   border: 2px solid white;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: bold;
@@ -489,7 +489,7 @@ function isPortDisabled(portNumber) {
 
 .back-button:hover {
   background: white;
-  transform: translateX(-5px);
+  transform: translateX(-3px);
 }
 
 .confirmation-view, .store-point-container, .redeem-container, .charging-container {
@@ -506,23 +506,23 @@ function isPortDisabled(portNumber) {
 }
 
 .checkmark {
-  font-size: 10rem;
+  font-size: 5rem;
   color: #38ef7d;
-  margin-bottom: 30px;
+  margin-bottom: 15px;
   animation: scaleIn 0.5s ease-out;
 }
 
 .confirmation-title {
   color: white;
-  font-size: 3.5rem;
-  margin-bottom: 20px;
+  font-size: 2rem;
+  margin-bottom: 10px;
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .confirmation-subtitle {
   color: white;
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   font-weight: 300;
 }
 

@@ -186,53 +186,53 @@ onMounted(() => {
 
 <style scoped>
 .points-display {
-  margin: 20px 0 40px 0;
+  margin: 10px 0 15px 0;
   text-align: center;
 }
 
 .points-container {
   background: rgba(255, 255, 255, 0.2);
-  padding: 20px 40px;
-  border-radius: 15px;
+  padding: 12px 25px;
+  border-radius: 12px;
   backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .points-title {
   color: white;
-  font-size: 2rem;
-  margin: 0 0 10px 0;
+  font-size: 1.2rem;
+  margin: 0 0 5px 0;
   font-weight: normal;
 }
 
 .points-value {
   color: white;
-  font-size: 3.5rem;
+  font-size: 2.5rem;
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .points-value.loading {
-  font-size: 2rem;
+  font-size: 1.5rem;
   opacity: 0.8;
 }
 
 .points-value.error {
-  font-size: 1.5rem;
+  font-size: 1rem;
   color: #ffeb3b;
 }
 
 .points-meta {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 1.2rem;
-  margin-top: 10px;
+  font-size: 0.9rem;
+  margin-top: 5px;
   font-weight: normal;
 }
 
 .points-time {
   color: rgba(255, 255, 255, 0.95);
-  font-size: 1.5rem;
-  margin-top: 10px;
+  font-size: 1rem;
+  margin-top: 5px;
   font-weight: 500;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
