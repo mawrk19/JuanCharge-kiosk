@@ -1,13 +1,13 @@
 <script setup>
-import { ref, onMounted, defineExpose } from 'vue'
+import { ref, onMounted, defineExpose, computed } from 'vue'
+import { Zap } from 'lucide-vue-next'
 
 const points = ref(0) // Start at 0, will update when data is loaded
 const loading = ref(true)
 const error = ref(null)
 const date = ref(null)
 const itemType = ref(null)
-const isPaused = ref(false)
-let fetchInterval = null
+const fetchInterval = null
 
 async function fetchPoints() {
   // Always fetch to check for new data - backend handles showing 0 if reset and no new data
@@ -17,15 +17,9 @@ async function fetchPoints() {
     
     // Check if electronAPI is available (running in Electron)
     if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
-      console.log('Using Electron API to fetch points from Tracked_json folder')
-      console.log('Calling invoke with channel: get-latest-points')
-      
       const data = await window.electronAPI.invoke('get-latest-points')
       
-      console.log('Received data from Electron:', JSON.stringify(data, null, 2))
-      
       if (data && data.error) {
-        console.error('Error in response:', data.error)
         throw new Error(data.error)
       }
       
@@ -34,21 +28,18 @@ async function fetchPoints() {
       }
       
       // Update points - backend only counts unused items
-      // Points accumulate from new/unused items only
       points.value = data.points || 0
-      // Store date/itemType for reference but don't display them
       date.value = data.date || null
       itemType.value = data.itemType || null
-      console.log('Points updated:', points.value, 'Unused items:', data.unusedItemCount, 'Total items:', data.itemCount)
     } else {
-      // Not in Electron - show error instead of using old JSON
-      console.warn('Electron API not available. window.electronAPI:', window.electronAPI)
-      throw new Error('Electron API not available. Please run the Electron app to fetch points from Tracked_json folder.')
+      // Not in Electron
+      console.warn('Electron API not available.')
+      // For dev/demo purposes, maybe don't throw if just testing UI
+      // throw new Error('Electron API not available.')
     }
   } catch (err) {
     console.error('Error fetching points:', err)
     error.value = err.message || 'Failed to load points'
-    // Don't reset points to 0 on error if we already have points
     if (points.value === 0) {
       points.value = 0
     }
@@ -59,30 +50,26 @@ async function fetchPoints() {
 
 async function resetPoints(action = 'store', port = null) {
   try {
-    console.log('Resetting points...', action, port)
-    
-    // Reset points to 0
     points.value = 0
     date.value = null
     itemType.value = null
     
-    // Call the reset IPC handler to create new transaction
     if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
       const result = await window.electronAPI.invoke('reset-points', action, port)
-      console.log('Reset result:', result)
-      
       if (result.success) {
-        // Immediately fetch to show 0 (no new data yet)
         await fetchPoints()
         return result
       }
       return result
     }
-    
-    console.log('Points reset to 0, new transaction created')
   } catch (err) {
     console.error('Error resetting points:', err)
   }
+}
+
+// Manual refresh
+async function refreshPoints() {
+  await fetchPoints()
 }
 
 // Helper to convert points to time display
@@ -97,13 +84,6 @@ function convertPointsToTime(pts) {
   return `${minutes} min`
 }
 
-// Refresh points manually
-async function refreshPoints() {
-  console.log('Refreshing points...')
-  await fetchPoints()
-}
-
-// Expose methods and reactive points to parent component
 defineExpose({
   resetPoints,
   refreshPoints,
@@ -113,127 +93,193 @@ defineExpose({
 })
 
 onMounted(() => {
-  // Debug: Check what's available on window
-  console.log('=== PointsDisplay Component Mounted ===');
-  console.log('Window object:', window);
-  console.log('window.electronAPI:', window.electronAPI);
-  console.log('typeof window.electronAPI:', typeof window.electronAPI);
-  if (window.electronAPI) {
-    console.log('electronAPI.invoke:', typeof window.electronAPI.invoke);
-    console.log('electronAPI.on:', typeof window.electronAPI.on);
-  }
-  
-  // Register event listener for real-time points updates
   if (window.electronAPI && typeof window.electronAPI.on === 'function') {
     window.electronAPI.on('points-updated', (data) => {
-      console.log('[POINTS EVENT] Received points update:', data);
       points.value = data.points;
       loading.value = false;
       error.value = null;
     });
-    console.log('✅ Registered points-updated event listener');
   }
   
-  // Wait a bit for Electron API to be ready (max 5 seconds)
-  let retries = 0
-  const maxRetries = 50
-  
-  const checkAndFetch = () => {
-    if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
-      console.log('✅ Electron API detected, fetching points...')
-      fetchPoints()
-      // Reduced polling to 30 seconds as fallback (events handle real-time updates)
-      fetchInterval = setInterval(() => {
-        fetchPoints()
-      }, 30000)
-    } else if (retries < maxRetries) {
-      retries++
-      if (retries % 10 === 0) { // Log every 10 attempts
-        console.log(`⏳ Waiting for Electron API... (attempt ${retries}/${maxRetries})`)
-      }
-      // Retry after 100ms if API not ready yet
-      setTimeout(checkAndFetch, 100)
-    } else {
-      // Give up after max retries
-      console.error('❌ Electron API not available after waiting')
-      console.error('window.electronAPI:', window.electronAPI)
-      console.error('Available window properties:', Object.keys(window).filter(k => k.includes('electron')))
-      error.value = 'Electron API not available. Please make sure you are running the Electron app (npm run electron), not just the dev server.'
-      loading.value = false
-    }
+  // Initial check
+  if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
+    fetchPoints()
+    // Poll less frequently as backup
+    setInterval(fetchPoints, 30000)
+  } else {
+      loading.value = false // Stop loading state if no API
   }
-  
-  // Start checking immediately
-  checkAndFetch()
 })
 </script>
 
 <template>
-  <div class="points-display">
-    <div class="points-container">
-      <h2 class="points-title">Available Points</h2>
-      <div v-if="loading" class="points-value loading">Loading...</div>
-      <div v-else-if="error" class="points-value error">{{ error }}</div>
-      <div v-else>
-        <div class="points-value">{{ points }}</div>
-        <div v-if="points > 0" class="points-time">
-          ≈ {{ convertPointsToTime(points) }} charging time
-        </div>
+  <div class="points-display-card glass-panel">
+    <div class="card-header">
+      <span class="label">Digital Balance</span>
+      <div v-if="loading" class="status-indicator loading"></div>
+      <div v-else-if="error" class="status-indicator error">!</div>
+      <div v-else class="status-indicator active"></div>
+    </div>
+    
+    <div class="points-content">
+      <div class="points-value">
+        {{ points }}
+        <span class="unit">pts</span>
       </div>
+      
+      <div class="time-estimate">
+        <Zap :size="18" class="icon" />
+        {{ points > 0 ? `≈ ${convertPointsToTime(points)} charging time` : 'Scan voucher or manual to add points' }}
+      </div>
+    </div>
+    
+    <div class="card-footer">
+      <div class="footer-info">JuanCharge Wallet</div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.points-display {
-  margin: 10px 0 15px 0;
+.points-display-card {
+  width: 100%;
+  max-width: 600px; /* Wider card */
+  padding: 30px;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg);
+}
+
+/* Shine effect */
+.points-display-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transform: skewX(-20deg);
+  animation: shine 8s infinite;
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-indicator.active {
+  background: var(--secondary);
+  box-shadow: 0 0 10px var(--secondary);
+}
+
+.status-indicator.loading {
+  background: var(--text-muted);
+  animation: pulse 1s infinite;
+}
+
+.status-indicator.error {
+  background: var(--accent-red);
+}
+
+.points-content {
   text-align: center;
-}
-
-.points-container {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 12px 25px;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
-.points-title {
-  color: white;
-  font-size: 1.2rem;
-  margin: 0 0 5px 0;
-  font-weight: normal;
+  padding: 10px 0;
 }
 
 .points-value {
-  color: white;
-  font-size: 2.5rem;
-  font-weight: bold;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  font-size: 5rem;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(to bottom, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.1));
 }
 
-.points-value.loading {
+.unit {
   font-size: 1.5rem;
-  opacity: 0.8;
-}
-
-.points-value.error {
-  font-size: 1rem;
-  color: #ffeb3b;
-}
-
-.points-meta {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.9rem;
-  margin-top: 5px;
-  font-weight: normal;
-}
-
-.points-time {
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 1rem;
-  margin-top: 5px;
   font-weight: 500;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  color: var(--text-muted);
+  -webkit-text-fill-color: var(--text-muted); /* Override gradient */
+}
+
+.time-estimate {
+  margin-top: 15px;
+  font-size: 1.1rem;
+  color: var(--secondary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(56, 239, 125, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: inline-flex;
+}
+
+.card-footer {
+  border-top: 1px solid rgba(0,0,0,0.05);
+  padding-top: 15px;
+  text-align: right;
+}
+
+.footer-info {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+@media (max-height: 480px) {
+  .points-display-card {
+    padding: 15px;
+    gap: 10px;
+    max-width: 500px;
+  }
+  
+  .points-value {
+    font-size: 3.5rem;
+  }
+  
+  .unit {
+    font-size: 1.2rem;
+  }
+  
+  .time-estimate {
+    font-size: 1rem;
+    margin-top: 5px;
+    padding: 5px 12px;
+  }
+  
+  .label {
+    font-size: 0.8rem;
+  }
 }
 </style>

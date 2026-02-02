@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import QrcodeVue from 'qrcode.vue'
+import { QrCode, ScanLine, Smartphone, ArrowLeft, CheckCircle } from 'lucide-vue-next'
+import Swal from 'sweetalert2'
 
 const emit = defineEmits(['complete'])
 
@@ -65,15 +67,19 @@ const redeemPoints = async () => {
     })
     
     if (result.success) {
-      successMessage.value = `✅ Redeemed ${pointsNum} points! New balance: ${result.newBalance}`
-      
-      // Clear form
-      points.value = ''
-      
-      // Return to home after 3 seconds
       setTimeout(() => {
-        emit('complete')
-      }, 3000)
+        Swal.fire({
+          title: 'Redemption Success!',
+          text: `Successfully redeemed ${pointsNum} points. New balance: ${result.newBalance}`,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false,
+          background: '#ffffff',
+          color: '#0f172a'
+        }).then(() => {
+          emit('complete')
+        })
+      }, 500)
     } else {
       errorMessage.value = result.error || 'Failed to redeem points'
     }
@@ -85,7 +91,6 @@ const redeemPoints = async () => {
   }
 }
 
-// Quick test with mock data
 const quickTest = () => {
   points.value = '180'
 }
@@ -96,33 +101,26 @@ const goBack = () => {
 </script>
 
 <template>
-  <div class="redeem-view">
-    <h1 class="title">Redeem Points</h1>
+  <div class="redeem-layout">
+    <h2 class="view-title">Redeem Points</h2>
     
-    <div class="content-container">
+    <div class="content-card glass-panel">
       <!-- QR Code Display -->
       <div v-if="!testMode" class="qr-section">
-        <div class="qr-content">
-          <div class="qr-container" @click="handleQrTap">
-            <QrcodeVue 
-              :value="qrCodeValue" 
-              :size="200" 
-              level="H"
-              render-as="svg"
-              class="qr-code"
-            />
-          </div>
-          
-          <div class="instructions">
-            <h2 class="instruction-title">How to Redeem:</h2>
-            <ol class="instruction-list">
-              <li>Open your JuanCharge mobile app</li>
-              <li>Scan this QR code</li>
-              <li>Select the amount of points to transfer</li>
-              <li>Confirm the transfer</li>
-            </ol>
-            <p class="test-hint">💡 Triple-tap QR for test mode</p>
-          </div>
+        <div class="qr-wrapper" @click="handleQrTap">
+          <QrcodeVue 
+            :value="qrCodeValue" 
+            :size="220" 
+            level="H"
+            render-as="svg"
+            class="qr-code"
+          />
+        </div>
+        
+        <div class="instructions">
+          <h3><Smartphone :size="20" class="step-icon" /> Open JuanCharge App</h3>
+          <h3><QrCode :size="20" class="step-icon" /> Scan QR Code</h3>
+          <h3><CheckCircle :size="20" class="step-icon" /> Transfer Points</h3>
         </div>
       </div>
       
@@ -132,328 +130,272 @@ const goBack = () => {
         
         <div class="form-container">
           <div class="form-group">
-            <label for="points" class="form-label">Points to Redeem</label>
+            <label for="points">Points to Redeem</label>
             <input
               id="points"
               v-model="points"
               type="number"
               class="form-input"
-              placeholder="Enter points amount"
+              placeholder="e.g. 100"
               :disabled="isRedeeming"
               min="1"
             />
           </div>
           
-          <div v-if="errorMessage" class="error-message">
-            {{ errorMessage }}
-          </div>
+          <div v-if="errorMessage" class="msg error">{{ errorMessage }}</div>
+          <div v-if="successMessage" class="msg success">{{ successMessage }}</div>
           
-          <div v-if="successMessage" class="success-message">
-            {{ successMessage }}
-          </div>
-          
-          <div class="button-group">
-            <button 
-              class="quick-test-button" 
-              @click="quickTest"
-              :disabled="isRedeeming"
-            >
-              Quick Test (180 pts)
-            </button>
-            
-            <button 
-              class="redeem-button" 
-              @click="redeemPoints"
-              :disabled="isRedeeming"
-            >
-              {{ isRedeeming ? 'Redeeming...' : 'Redeem' }}
+          <div class="btn-group">
+            <button class="btn secondary" @click="quickTest" :disabled="isRedeeming">Mock 180</button>
+            <button class="btn primary" @click="redeemPoints" :disabled="isRedeeming">
+              {{ isRedeeming ? 'Processing...' : 'Redeem' }}
             </button>
           </div>
           
-          <button class="exit-test-button" @click="testMode = false">
-            Exit Test Mode
-          </button>
+          <button class="btn text-only" @click="testMode = false">Exit Test Mode</button>
         </div>
       </div>
     </div>
     
-    <button class="back-button" @click="goBack">← Back to Home</button>
+    <button class="back-link" @click="goBack">Cancel</button>
   </div>
 </template>
 
 <style scoped>
-.redeem-view {
-  width: 100%;
-  height: 100%;
+.redeem-layout {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  padding: 10px;
-  animation: fadeIn 0.5s ease-in;
-}
-
-.title {
-  color: white;
-  font-size: 3rem;
-  margin-bottom: 10px;
-  text-align: center;
-  font-weight: bold;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.content-container {
-  background: white;
-  border-radius: 12px;
-  padding: 15px;
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
-  max-width: 600px;
   width: 100%;
 }
 
-.qr-section {
-  width: 100%;
+.view-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 25px;
 }
 
-.qr-content {
+.content-card {
+  padding: 40px;
+  width: 100%;
+  max-width: 500px;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
 }
 
-.qr-container {
+/* QR Section */
+.qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  width: 100%;
+}
+
+.qr-wrapper {
   background: white;
-  padding: 10px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
-}
-
-.qr-code {
-  display: block;
+  padding: 15px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 .instructions {
-  flex: 1;
-  text-align: left;
-}
-
-.instruction-title {
-  color: #11998e;
-  font-size: 1.1rem;
-  margin-bottom: 8px;
-  font-weight: bold;
-}
-
-.instruction-list {
-  color: #333;
-  font-size: 1rem;
-  line-height: 1.5;
-  padding-left: 20px;
-  margin: 0;
-}
-
-.instruction-list li {
-  margin-bottom: 5px;
-}
-
-.test-hint {
-  color: #999;
-  font-size: 0.7rem;
-  margin-top: 10px;
-  font-style: italic;
-  text-align: center;
-}
-
-.qr-container {
-  cursor: default;
-  user-select: none;
-}
-
-/* Test Mode Styles */
-.test-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
   width: 100%;
 }
 
-.test-badge {
-  background: #ff9800;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 15px;
-  font-size: 0.9rem;
-  font-weight: bold;
-  display: inline-block;
-  margin-bottom: 15px;
+.instructions h3 {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0;
 }
 
-.form-container {
-  max-width: 400px;
-  margin: 0 auto;
+.step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(17, 153, 142, 0.1);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* Test Section */
+.test-section {
+  width: 100%;
+  text-align: center;
+}
+
+.test-badge {
+  background: var(--accent-red);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-block;
+  margin-bottom: 20px;
 }
 
 .form-group {
-  margin-bottom: 12px;
   text-align: left;
+  margin-bottom: 20px;
 }
 
-.form-label {
+.form-group label {
   display: block;
-  color: #333;
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 5px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
 }
 
 .form-input {
   width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  color: var(--text-main);
   font-size: 1.1rem;
-  padding: 10px 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  transition: border-color 0.3s ease;
-  box-sizing: border-box;
+  outline: none;
 }
 
 .form-input:focus {
-  outline: none;
-  border-color: #11998e;
+  border-color: var(--primary);
 }
 
-.form-input:disabled {
-  background: #f5f5f5;
-  cursor: not-allowed;
-}
-
-.error-message {
-  background: #ffebee;
-  color: #c62828;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
-  border-left: 3px solid #c62828;
-}
-
-.success-message {
-  background: #e8f5e9;
-  color: #2e7d32;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
-  border-left: 3px solid #2e7d32;
-}
-
-.button-group {
+.btn-group {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
-.quick-test-button,
-.redeem-button {
+.btn {
   flex: 1;
-  font-size: 1rem;
-  padding: 12px 15px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
   font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
 }
 
-.quick-test-button {
-  background: #ff9800;
-  color: white;
-}
-
-.quick-test-button:hover:not(:disabled) {
-  background: #f57c00;
-  transform: translateY(-1px);
-}
-
-.redeem-button {
-  background: #11998e;
-  color: white;
-}
-
-.redeem-button:hover:not(:disabled) {
-  background: #0d7a6e;
-  transform: translateY(-1px);
-}
-
-.redeem-button:disabled,
-.quick-test-button:disabled {
-  background: #ccc;
+.btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
-.exit-test-button {
-  width: 100%;
+.btn.primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn.secondary {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+}
+
+.btn.text-only {
+  background: none;
+  color: var(--text-muted);
   font-size: 0.9rem;
-  padding: 10px 15px;
-  background: #f5f5f5;
-  color: #333;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.msg {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+}
+
+.msg.error {
+  background: rgba(255, 71, 87, 0.2);
+  color: #ff4757;
+}
+
+.msg.success {
+  background: rgba(56, 239, 125, 0.2);
+  color: #38ef7d;
+}
+
+.back-link {
+  margin-top: 20px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 600;
-}
-
-.exit-test-button:hover {
-  background: #e0e0e0;
-}
-
-.back-button {
-  margin-top: 8px;
   font-size: 1rem;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #11998e;
-  border: 2px solid white;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: bold;
 }
 
-.back-button:hover {
-  background: white;
-  transform: translateX(-3px);
+.back-link:hover {
+  color: white;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Portrait orientation optimization */
-@media (orientation: portrait) {
-  .title {
-    font-size: 3rem;
+@media (max-height: 480px) {
+  .view-title {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
   }
   
-  .content-container {
-    padding: 30px;
+  .content-card {
+    padding: 15px;
+    flex-direction: row;
+    gap: 20px;
+    max-width: 650px;
+    align-items: flex-start;
   }
   
-  .qr-container {
-    padding: 20px;
+  .qr-section {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px;
   }
   
-  .instruction-title {
-    font-size: 1.5rem;
+  .qr-wrapper {
+    padding: 10px;
   }
   
-  .instruction-list {
-    font-size: 1.2rem;
+  /* Override QR size in template via props/CSS if possible, or scale transform */
+  .qr-code {
+    width: 160px !important;
+    height: 160px !important;
+  }
+  
+  .instructions h3 {
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+  }
+  
+  .step-num {
+    width: 24px;
+    height: 24px;
+    font-size: 0.9rem;
+  }
+  
+  .test-badge {
+    margin-bottom: 10px;
+  }
+  
+  .form-group {
+    margin-bottom: 10px;
+  }
+  
+  .input {
+    padding: 8px;
+  }
+  
+  .btn {
+    padding: 8px;
   }
 }
 </style>
