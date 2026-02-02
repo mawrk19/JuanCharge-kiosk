@@ -1,4 +1,5 @@
 <script setup>
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { Zap, Download, Gift, Cable, ArrowLeft, CheckCircle, Activity } from 'lucide-vue-next'
 import Swal from 'sweetalert2'
 import PointsDisplay from './components/PointsDisplay.vue'
@@ -19,9 +20,11 @@ let statusInterval = null
 // Poll port statuses
 const updatePortStatuses = async () => {
   try {
-    const result = await window.electronAPI.invoke('get-charging-status')
-    if (result.success && result.statuses) {
-      portStatuses.value = result.statuses
+    if (window.electronAPI) {
+      const result = await window.electronAPI.invoke('get-charging-status')
+      if (result.success && result.statuses) {
+        portStatuses.value = result.statuses
+      }
     }
   } catch (error) {
     console.error('Error getting port statuses:', error)
@@ -72,24 +75,22 @@ function goToRedeem() {
   currentView.value = 'redeem'
 }
 
-async function goToStorePoint() {
-  // Reset points when Store Point button is clicked
-  if (pointsDisplayRef.value && pointsDisplayRef.value.resetPoints) {
-    const result = await pointsDisplayRef.value.resetPoints('store', null)
-    
-    if (result && result.qrData && result.storedPoints > 0) {
-      storedQrData.value = result.qrData
-      storedPoints.value = result.storedPoints
-      currentView.value = 'storePoint'
-    } else {
-      // Fallback or 0 points
-      alert('Points have been reset to 0! (No points to store)')
-    }
-  } else {
-    alert('System error: Points display not ready')
+// Navigation: Store Points
+const goToStorePoint = async () => {
+  await updateCurrentPoints() // Ensure we have latest points
+  storedPoints.value = currentPoints.value
+  
+  // Generate QR Data for storing
+  const data = {
+    action: 'store_points',
+    amount: storedPoints.value,
+    timestamp: Date.now()
   }
+  storedQrData.value = JSON.stringify(data)
+  
+  currentView.value = 'storePoint'
 }
-
+  
 async function selectPort(portNumber) {
   selectedPort.value = portNumber
   
