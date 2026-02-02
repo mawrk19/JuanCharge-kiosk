@@ -60,11 +60,24 @@ const redeemPoints = async () => {
     // Auto-generate user ID for test mode
     const generatedUserId = 'test_user_' + Date.now()
     
-    const result = await window.electronAPI.invoke('redeem-points', {
-      userId: generatedUserId,
-      points: pointsNum,
-      timestamp: Date.now()
-    })
+    let result
+    if (window.electronAPI) {
+      result = await window.electronAPI.invoke('redeem-points', {
+        userId: generatedUserId,
+        points: pointsNum,
+        timestamp: Date.now()
+      })
+    } else {
+      // Mock result for browser testing
+      console.warn('Electron API not found, simulating success')
+      await new Promise(r => setTimeout(r, 1000))
+      
+      const currentMockPoints = parseInt(localStorage.getItem('juancharge-mock-points') || '0')
+      const newBalance = currentMockPoints + pointsNum
+      localStorage.setItem('juancharge-mock-points', newBalance.toString())
+      
+      result = { success: true, newBalance: newBalance }
+    }
     
     if (result.success) {
       setTimeout(() => {

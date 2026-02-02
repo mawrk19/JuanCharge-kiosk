@@ -32,10 +32,20 @@ async function fetchPoints() {
       date.value = data.date || null
       itemType.value = data.itemType || null
     } else {
-      // Not in Electron
-      console.warn('Electron API not available.')
-      // For dev/demo purposes, maybe don't throw if just testing UI
-      // throw new Error('Electron API not available.')
+      // Not in Electron - Mock Data
+      console.warn('Electron API not available. Using local mock data.')
+      
+      // Simulate network delay
+      await new Promise(r => setTimeout(r, 500))
+      
+      const stored = localStorage.getItem('juancharge-mock-points')
+      if (stored === null) {
+        // Init if empty
+        localStorage.setItem('juancharge-mock-points', '0')
+        points.value = 0
+      } else {
+        points.value = parseInt(stored)
+      }
     }
   } catch (err) {
     console.error('Error fetching points:', err)
@@ -107,7 +117,8 @@ onMounted(() => {
     // Poll less frequently as backup
     setInterval(fetchPoints, 30000)
   } else {
-      loading.value = false // Stop loading state if no API
+      fetchPoints() // Fetch mock data
+      // loading.value = false // handled in fetchPoints
   }
 })
 </script>
