@@ -17,6 +17,8 @@ const portStatuses = ref([null, null, null]) // Status for ports 1, 2, 3
 const currentPoints = ref(0)
 const chargingDuration = ref(0)
 const kioskCode = ref('UCC-Kiosk-0001')
+const devModeClicks = ref(0)
+const isDevMode = ref(false)
 let statusInterval = null
 
 // Poll port statuses
@@ -85,6 +87,23 @@ function goToUseNow() {
 
 function goToRedeem() {
   currentView.value = 'redeem'
+}
+
+function handleLogoClick() {
+  devModeClicks.value++
+  if (devModeClicks.value >= 5) {
+    isDevMode.value = true
+    Swal.fire({
+      title: 'Dev Mode Active',
+      text: 'Redeem (Manual) button is now available.',
+      icon: 'info',
+      timer: 1500,
+      showConfirmButton: false,
+      background: '#ffffff',
+      color: '#0f172a'
+    })
+    devModeClicks.value = 0
+  }
 }
 
 const goToStorePoint = async () => {
@@ -276,7 +295,7 @@ function isPortDisabled(portNumber) {
   <div class="app-layout">
     <!-- Header -->
     <header class="app-header glass-panel">
-      <div class="logo-area">
+      <div class="logo-area" @click="handleLogoClick" style="cursor: pointer">
         <h1 class="app-title"><span class="text-gradient">Juan</span>Charge</h1>
       </div>
       <div v-if="portStatuses.some(p => p && p.active)" class="active-status-badge">
@@ -311,7 +330,7 @@ function isPortDisabled(portNumber) {
           </div>
           
           <!-- Primary Actions -->
-          <div class="action-grid">
+          <div :class="['action-grid', { 'three-cols': isDevMode }]">
             <button class="action-card primary glass-panel" @click="goToUseNow">
               <div class="icon-wrapper"><Zap :size="48" /></div>
               <div class="card-content">
@@ -325,6 +344,14 @@ function isPortDisabled(portNumber) {
               <div class="card-content">
                 <span class="card-title">Store Points</span>
                 <span class="card-desc">Save for later</span>
+              </div>
+            </button>
+
+            <button v-if="isDevMode" class="action-card tertiary glass-panel" @click="goToRedeem">
+              <div class="icon-wrapper"><Gift :size="48" /></div>
+              <div class="card-content">
+                <span class="card-title">Redeem</span>
+                <span class="card-desc">Manual Entry</span>
               </div>
             </button>
           </div>
@@ -379,7 +406,10 @@ function isPortDisabled(portNumber) {
         
         <!-- Redeem View -->
         <div v-else-if="currentView === 'redeem'" class="view-container centered-view" key="redeem">
-          <RedeemView @complete="onRedeemComplete" />
+          <RedeemView 
+            @complete="onRedeemComplete" 
+            @hideDevMode="() => { isDevMode = false; resetToHome(); }"
+          />
         </div>
         
         <!-- Charging Progress View -->
@@ -532,6 +562,10 @@ function isPortDisabled(portNumber) {
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
   width: 100%;
+}
+
+.action-grid.three-cols {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .action-card {

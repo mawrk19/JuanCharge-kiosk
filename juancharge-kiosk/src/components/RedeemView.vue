@@ -4,7 +4,7 @@ import QrcodeVue from 'qrcode.vue'
 import { QrCode, ScanLine, Smartphone, ArrowLeft, CheckCircle } from 'lucide-vue-next'
 import Swal from 'sweetalert2'
 
-const emit = defineEmits(['complete'])
+const emit = defineEmits(['complete', 'hideDevMode'])
 
 // QR Code data for kiosk identification
 const kioskData = ref({
@@ -113,6 +113,10 @@ const quickTest = () => {
 const goBack = () => {
   emit('complete')
 }
+
+const hideDevMode = () => {
+  emit('hideDevMode')
+}
 </script>
 
 <template>
@@ -184,7 +188,10 @@ const goBack = () => {
       </div>
     </div>
     
-    <button class="back-link" @click="goBack">Cancel</button>
+    <div class="footer-actions">
+      <button class="back-link" @click="goBack">Cancel</button>
+      <button class="hide-btn" @click="hideDevMode">Hide Dev Mode</button>
+    </div>
   </div>
 </template>
 
@@ -355,17 +362,28 @@ const goBack = () => {
   color: #38ef7d;
 }
 
-.back-link {
-  margin-top: 20px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 1rem;
+.back-link:hover, .hide-btn:hover {
+  color: var(--primary);
 }
 
-.back-link:hover {
-  color: white;
+.footer-actions {
+  display: flex;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.hide-btn {
+  background: none;
+  border: none;
+  color: var(--accent-red);
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.hide-btn:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 @media (max-height: 480px) {
