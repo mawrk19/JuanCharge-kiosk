@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import QRCode from 'qrcode'
-import { CheckCircle } from 'lucide-vue-next'
+import { CheckCircle, ArrowLeft } from 'lucide-vue-next'
 import Swal from 'sweetalert2'
 
 const props = defineProps({
@@ -15,7 +15,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['done'])
+const emit = defineEmits(['done', 'cancel'])
 const canvasRef = ref(null)
 
 onMounted(() => {
@@ -48,6 +48,10 @@ function handleDone() {
     emit('done')
   })
 }
+
+function handleCancel() {
+  emit('cancel')
+}
 </script>
 
 <template>
@@ -70,9 +74,14 @@ function handleDone() {
       </div>
     </div>
     
-    <button class="done-btn" @click="handleDone">
-      <CheckCircle :size="20" style="margin-right: 8px" /> Done
-    </button>
+    <div class="actions">
+      <button class="back-btn" @click="handleCancel">
+        <ArrowLeft :size="20" style="margin-right: 8px" /> Back
+      </button>
+      <button class="done-btn" @click="handleDone">
+        <CheckCircle :size="20" style="margin-right: 8px" /> Done
+      </button>
+    </div>
   </div>
 </template>
 
@@ -84,13 +93,17 @@ function handleDone() {
   width: 100%;
 }
 
-.done-btn {
+.actions {
+  display: flex;
+  gap: 20px;
   margin-top: 30px;
-  padding: 15px 50px;
+}
+
+.done-btn, .back-btn {
+  padding: 15px 40px;
   background: white;
-  color: var(--primary);
   border: none;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   border-radius: var(--radius-xl);
   cursor: pointer;
@@ -99,6 +112,20 @@ function handleDone() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.done-btn {
+  color: var(--primary);
+}
+
+.back-btn {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.done-btn:hover, .back-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15);
 }
 
 .view-title {
@@ -206,10 +233,14 @@ function handleDone() {
     font-size: 0.9rem;
   }
   
-  .done-btn {
+  .actions {
     margin-top: 15px;
-    padding: 10px 30px;
-    font-size: 1rem;
+    gap: 15px;
+  }
+  
+  .done-btn, .back-btn {
+    padding: 8px 25px;
+    font-size: 0.95rem;
   }
 }
 </style>

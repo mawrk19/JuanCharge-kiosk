@@ -6,7 +6,6 @@ import PointsDisplay from './components/PointsDisplay.vue'
 import StorePointView from './components/StorePointView.vue'
 import RedeemView from './components/RedeemView.vue'
 import ChargingProgress from './components/ChargingProgress.vue'
-import PortQRModal from './components/PortQRModal.vue'
 import { QrCode } from 'lucide-vue-next'
 
 const currentView = ref('home') // home, selectPort, confirmation, storePoint, redeem, charging
@@ -18,7 +17,6 @@ const portStatuses = ref([null, null, null]) // Status for ports 1, 2, 3
 const currentPoints = ref(0)
 const chargingDuration = ref(0)
 const kioskCode = ref('UCC-Kiosk-0001')
-const activeQRPort = ref(null)
 let statusInterval = null
 
 // Poll port statuses
@@ -91,6 +89,18 @@ function goToRedeem() {
 
 const goToStorePoint = async () => {
   await updateCurrentPoints() // Ensure we have latest points
+  
+  if (currentPoints.value <= 0) {
+    Swal.fire({
+      title: 'No Points',
+      text: 'You do not have any points to store.',
+      icon: 'warning',
+      background: '#ffffff',
+      color: '#0f172a'
+    });
+    return;
+  }
+  
   storedPoints.value = currentPoints.value
   
   try {
@@ -325,25 +335,22 @@ function isPortDisabled(portNumber) {
           <h2 class="view-title">Select Charging Port</h2>
           
           <div class="ports-grid">
-            <div v-for="port in [1, 2, 3]" :key="port" class="port-tile">
-              <button 
-                :class="['port-card glass-panel', getPortButtonClass(port)]" 
-                @click="selectPort(port)"
-                :disabled="isPortDisabled(port)"
-              >
-                <div class="port-icon-wrapper">
-                  <div class="cable-icon"><Cable :size="40" /></div>
-                </div>
-                <div class="port-info">
-                  <span class="port-number">Port {{ port }}</span>
-                  <span class="port-status">{{ getPortButtonText(port).status }}</span>
-                  <span class="port-subtext">{{ getPortButtonText(port).subtext }}</span>
-                </div>
-              </button>
-              <button class="qr-tip-btn glass-panel" @click="activeQRPort = port">
-                <QrCode :size="16" /> Scan to Pay
-              </button>
-            </div>
+            <button 
+              v-for="port in [1, 2, 3]" 
+              :key="port"
+              :class="['port-card glass-panel', getPortButtonClass(port)]" 
+              @click="selectPort(port)"
+              :disabled="isPortDisabled(port)"
+            >
+              <div class="port-icon-wrapper">
+                <div class="cable-icon"><Cable :size="40" /></div>
+              </div>
+              <div class="port-info">
+                <span class="port-number">Port {{ port }}</span>
+                <span class="port-status">{{ getPortButtonText(port).status }}</span>
+                <span class="port-subtext">{{ getPortButtonText(port).subtext }}</span>
+              </div>
+            </button>
           </div>
           
           <button class="back-btn" @click="resetToHome">
@@ -365,7 +372,8 @@ function isPortDisabled(portNumber) {
           <StorePointView 
             :qrData="storedQrData" 
             :points="storedPoints" 
-            @done="resetToHome" 
+            @done="resetToHome"
+            @cancel="resetToHome"
           />
         </div>
         
@@ -392,13 +400,6 @@ function isPortDisabled(portNumber) {
       class="points-hidden" 
     />
     
-    <!-- Port QR Modal -->
-    <PortQRModal 
-      v-if="activeQRPort" 
-      :port="activeQRPort" 
-      :kioskCode="kioskCode"
-      @close="activeQRPort = null"
-    />
 
     <!-- Background Decor -->
     <div class="bg-gradient-orb orb-1"></div>
@@ -637,36 +638,8 @@ function isPortDisabled(portNumber) {
 .ports-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  gap: 24px;
   width: 100%;
-}
-
-.port-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.qr-tip-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--primary);
-  background: white;
-  border: 1px solid rgba(17, 153, 142, 0.2);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.qr-tip-btn:hover {
-  background: var(--primary);
-  color: white;
-  transform: translateY(-2px);
 }
 
 .port-card {
@@ -844,13 +817,8 @@ function isPortDisabled(portNumber) {
   }
   
   .port-card {
-    padding: 10px;
-    height: 150px;
-  }
-  
-  .qr-tip-btn {
-    padding: 5px;
-    font-size: 0.75rem;
+    padding: 15px;
+    height: 180px;
   }
   
   .port-icon-wrapper {
