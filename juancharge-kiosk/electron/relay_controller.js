@@ -24,12 +24,12 @@ const RELAY_PINS = {
 const isRaspberryPi = () => {
   const platform = os.platform();
   const arch = os.arch();
-  
+
   // Check if running on Linux ARM (typical for Raspberry Pi)
   if (platform === 'linux' && (arch === 'arm' || arch === 'arm64')) {
     return true;
   }
-  
+
   return false;
 };
 
@@ -68,20 +68,21 @@ const initializeGpio = async () => {
     console.log('[RELAY MOCK] Platform:', os.platform(), '- Using mock relay controller');
     return true;
   }
-  
+
   try {
     // Dynamically import onoff (will fail on non-Linux platforms)
     const onoffModule = await import('onoff');
     Gpio = onoffModule.Gpio;
-    
+
     // Initialize GPIO pins for all relays
     for (const [port, pin] of Object.entries(RELAY_PINS)) {
-      relayGpios[port] = new Gpio(pin, 'out');
+      const portNum = parseInt(port);
+      relayGpios[portNum] = new Gpio(pin, 'out');
       // Ensure relay starts in OFF state
-      relayGpios[port].writeSync(0);
-      console.log(`[RELAY] Initialized Port ${port} on GPIO ${pin}`);
+      relayGpios[portNum].writeSync(0);
+      console.log(`[RELAY] Initialized Port ${portNum} on GPIO ${pin}`);
     }
-    
+
     return true;
   } catch (error) {
     console.error('[RELAY] Failed to initialize GPIO:', error.message);
@@ -100,34 +101,40 @@ export const activateRelay = async (port, durationSeconds) => {
   if (!RELAY_PINS[port]) {
     return { success: false, error: `Invalid port: ${port}` };
   }
-  
+
   // Check if port is already active
   if (relayStates[port].active) {
     return { success: false, error: `Port ${port} is already active` };
   }
-  
+
   const endTime = new Date(Date.now() + durationSeconds * 1000);
-  
+
   if (USE_MOCK) {
     console.log(`[RELAY MOCK] Activating Port ${port} for ${durationSeconds} seconds`);
     console.log(`[RELAY MOCK] Port ${port} will auto-shutoff at: ${endTime.toISOString()}`);
   } else {
     try {
+      // Safety check: ensure GPIO is initialized
+      const gpio = relayGpios[port];
+      if (!gpio) {
+        throw new Error(`GPIO for Port ${port} is not initialized`);
+      }
+
       // Turn relay ON (write HIGH to GPIO)
-      relayGpios[port].writeSync(1);
+      gpio.writeSync(1);
       console.log(`[RELAY] Port ${port} activated for ${durationSeconds} seconds`);
     } catch (error) {
       console.error(`[RELAY] Failed to activate Port ${port}:`, error.message);
       return { success: false, error: error.message };
     }
   }
-  
+
   // Update state
   relayStates[port].active = true;
   relayStates[port].remainingSeconds = durationSeconds;
   relayStates[port].totalSeconds = durationSeconds;
   relayStates[port].startTime = new Date().toISOString();
-  
+
   // Start countdown timer (updates every second)
   const countdownInterval = setInterval(() => {
     if (relayStates[port].remainingSeconds > 0) {
@@ -136,18 +143,18 @@ export const activateRelay = async (port, durationSeconds) => {
       emitStatusChange();
     }
   }, 1000);
-  
+
   // Set auto-shutoff timer
   const shutoffTimer = setTimeout(() => {
     clearInterval(countdownInterval);
     deactivateRelay(port, true);
   }, durationSeconds * 1000);
-  
+
   relayStates[port].timer = { shutoff: shutoffTimer, countdown: countdownInterval };
-  
+
   // Emit status change event
   emitStatusChange();
-  
+
   return {
     success: true,
     port,
@@ -166,24 +173,28 @@ export const deactivateRelay = (port, isAutoShutoff = false) => {
   if (!RELAY_PINS[port]) {
     return { success: false, error: `Invalid port: ${port}` };
   }
-  
+
   if (!relayStates[port].active) {
     return { success: false, error: `Port ${port} is not active` };
   }
-  
+
   // Clear timers
   if (relayStates[port].timer) {
     clearTimeout(relayStates[port].timer.shutoff);
     clearInterval(relayStates[port].timer.countdown);
   }
-  
+
   if (USE_MOCK) {
     const reason = isAutoShutoff ? 'auto-shutoff' : 'manual deactivation';
     console.log(`[RELAY MOCK] Port ${port} deactivated (${reason})`);
   } else {
     try {
-      // Turn relay OFF (write LOW to GPIO)
-      relayGpios[port].writeSync(0);
+      // Safety check: ensure GPIO is initialized
+      const gpio = relayGpios[port];
+      if (gpio) {
+        // Turn relay OFF (write LOW to GPIO)
+        gpio.writeSync(0);
+      }
       const reason = isAutoShutoff ? 'auto-shutoff' : 'manual deactivation';
       console.log(`[RELAY] Port ${port} deactivated (${reason})`);
     } catch (error) {
@@ -191,17 +202,17 @@ export const deactivateRelay = (port, isAutoShutoff = false) => {
       return { success: false, error: error.message };
     }
   }
-  
+
   // Reset state
   relayStates[port].active = false;
   relayStates[port].timer = null;
   relayStates[port].remainingSeconds = 0;
   relayStates[port].totalSeconds = 0;
   relayStates[port].startTime = null;
-  
+
   // Emit status change event
   emitStatusChange();
-  
+
   return { success: true, port };
 };
 
@@ -214,7 +225,7 @@ export const getRelayStatus = (port) => {
   if (!RELAY_PINS[port]) {
     return { error: `Invalid port: ${port}` };
   }
-  
+
   return {
     port,
     active: relayStates[port].active,
@@ -241,14 +252,14 @@ export const getAllRelayStatuses = () => {
  */
 export const cleanup = () => {
   console.log('[RELAY] Cleaning up...');
-  
+
   // Deactivate all active relays
   for (const port of [1, 2, 3]) {
     if (relayStates[port].active) {
       deactivateRelay(port);
     }
   }
-  
+
   // Unexport GPIO pins (only on Raspberry Pi)
   if (!USE_MOCK && Gpio) {
     for (const [port, gpio] of Object.entries(relayGpios)) {
