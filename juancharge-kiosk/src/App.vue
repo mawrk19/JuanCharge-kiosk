@@ -317,14 +317,6 @@ function isPortDisabled(portNumber) {
                 <span class="card-desc">Save for later</span>
               </div>
             </button>
-            
-            <button class="action-card tertiary glass-panel" @click="goToRedeem">
-              <div class="icon-wrapper"><Gift :size="48" /></div>
-              <div class="card-content">
-                <span class="card-title">Redeem</span>
-                <span class="card-desc">Transfer Points</span>
-              </div>
-            </button>
           </div>
         </div>
         
@@ -536,7 +528,7 @@ function isPortDisabled(portNumber) {
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 24px;
   width: 100%;
 }
