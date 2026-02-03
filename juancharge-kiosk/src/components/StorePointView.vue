@@ -21,8 +21,9 @@ const canvasRef = ref(null)
 onMounted(() => {
   if (canvasRef.value && props.qrData) {
     QRCode.toCanvas(canvasRef.value, props.qrData, { 
-      width: 200,
-      margin: 2,
+      width: 300,
+      margin: 1,
+      errorCorrectionLevel: 'L',
       color: {
         dark: '#000000',
         light: '#ffffff'
@@ -193,8 +194,8 @@ function handleDone() {
   }
   
   .qr-box canvas {
-    width: 150px !important;
-    height: 150px !important;
+    width: 200px !important;
+    height: 200px !important;
   }
   
   .points-badge .value {

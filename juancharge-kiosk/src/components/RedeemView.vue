@@ -18,7 +18,8 @@ const qrCodeValue = computed(() => JSON.stringify(kioskData.value))
 // Hidden test mode for manual redemption (triple-tap QR code to activate)
 const testMode = ref(false)
 const tapCount = ref(0)
-const userId = ref('')
+const userId = ref('') // Used for scanned data
+const userIdInput = ref('') // Used for manual test input
 const points = ref('')
 const isRedeeming = ref(false)
 const errorMessage = ref('')
@@ -57,8 +58,8 @@ const redeemPoints = async () => {
   isRedeeming.value = true
   
   try {
-    // Auto-generate user ID for test mode
-    const generatedUserId = 'test_user_' + Date.now()
+    // Use input user ID or auto-generate
+    const generatedUserId = userIdInput.value ? userIdInput.value.trim() : 'test_user_' + Date.now()
     
     let result
     if (window.electronAPI) {
@@ -105,7 +106,8 @@ const redeemPoints = async () => {
 }
 
 const quickTest = () => {
-  points.value = '180'
+  userIdInput.value = '1'
+  points.value = '50'
 }
 
 const goBack = () => {
@@ -143,6 +145,18 @@ const goBack = () => {
         
         <div class="form-container">
           <div class="form-group">
+            <label for="userId">User ID (Optional)</label>
+            <input
+              id="userId"
+              v-model="userIdInput"
+              type="text"
+              class="form-input"
+              placeholder="Auto-generated if empty"
+              :disabled="isRedeeming"
+            />
+          </div>
+
+          <div class="form-group">
             <label for="points">Points to Redeem</label>
             <input
               id="points"
@@ -159,7 +173,7 @@ const goBack = () => {
           <div v-if="successMessage" class="msg success">{{ successMessage }}</div>
           
           <div class="btn-group">
-            <button class="btn secondary" @click="quickTest" :disabled="isRedeeming">Mock 180</button>
+            <button class="btn secondary" @click="quickTest" :disabled="isRedeeming">Mock User 1</button>
             <button class="btn primary" @click="redeemPoints" :disabled="isRedeeming">
               {{ isRedeeming ? 'Processing...' : 'Redeem' }}
             </button>

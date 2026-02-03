@@ -75,20 +75,42 @@ function goToRedeem() {
   currentView.value = 'redeem'
 }
 
-// Navigation: Store Points
 const goToStorePoint = async () => {
   await updateCurrentPoints() // Ensure we have latest points
   storedPoints.value = currentPoints.value
   
-  // Generate QR Data for storing
-  const data = {
-    action: 'store_points',
-    amount: storedPoints.value,
-    timestamp: Date.now()
+  try {
+    if (window.electronAPI) {
+      const result = await window.electronAPI.invoke('generate-signed-voucher', {
+        amount: storedPoints.value
+      })
+      
+      if (result.success) {
+        storedQrData.value = result.token
+        currentView.value = 'storePoint'
+      } else {
+        console.error('Failed to generate token:', result.error)
+        alert('Failed to generate secure voucher. Please try again.')
+      }
+    } else {
+      // Fallback for browser testing
+      const data = {
+        action: 'store_points',
+        amount: storedPoints.value,
+        timestamp: Date.now(),
+        mock: true
+      }
+      storedQrData.value = JSON.stringify(data)
+      
+      // Clear mock storage
+      localStorage.setItem('juancharge-mock-points', '0')
+      
+      currentView.value = 'storePoint'
+    }
+  } catch (err) {
+    console.error('Error in goToStorePoint:', err)
+    alert('An unexpected error occurred.')
   }
-  storedQrData.value = JSON.stringify(data)
-  
-  currentView.value = 'storePoint'
 }
   
 async function selectPort(portNumber) {
