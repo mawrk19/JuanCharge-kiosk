@@ -163,46 +163,107 @@ async function selectPort(portNumber) {
   await updateCurrentPoints()
   
   if (currentPoints.value <= 0) {
-    alert('No points available!')
+    Swal.fire({
+      title: 'No Points',
+      text: 'You do not have any points to use.',
+      icon: 'warning',
+      background: '#ffffff',
+      color: '#0f172a'
+    });
     return
   }
   
   // Check if port is already in use
   const portStatus = portStatuses.value.find(s => s && s.port === portNumber)
   if (portStatus && portStatus.active) {
-    alert(`Port ${portNumber} is currently in use!`)
+    Swal.fire({
+      title: 'Port In Use',
+      text: `Port ${portNumber} is currently active. Please choose another port.`,
+      icon: 'error',
+      background: '#ffffff',
+      color: '#0f172a'
+    });
     return
   }
+
+  // Ask how many points to use
+  const { value: pointsToUse } = await Swal.fire({
+    title: `Charge on Port ${portNumber}`,
+    text: `How many points would you like to use? (Available: ${currentPoints.value})`,
+    input: 'number',
+    inputAttributes: {
+      min: 1,
+      max: currentPoints.value,
+      step: 1
+    },
+    inputValue: currentPoints.value,
+    showCancelButton: true,
+    confirmButtonText: 'Start Charging',
+    confirmButtonColor: '#11998e',
+    background: '#ffffff',
+    color: '#0f172a',
+    inputValidator: (value) => {
+      if (!value || value <= 0) {
+        return 'Please enter a valid amount of points'
+      }
+      if (value > currentPoints.value) {
+        return `You only have ${currentPoints.value} points available`
+      }
+    }
+  })
+
+  if (!pointsToUse) return;
+
+  const pointsNum = parseInt(pointsToUse)
   
   // Activate charging
   try {
     const result = await window.electronAPI.invoke('activate-charging', {
       port: portNumber,
-      points: currentPoints.value
+      points: pointsNum
     })
     
     if (result.success) {
       // Force refresh points display
       if (pointsDisplayRef.value && pointsDisplayRef.value.refreshPoints) {
         await pointsDisplayRef.value.refreshPoints()
-        console.log('Points refreshed after charging activation')
       }
       
-      // Update current points immediately
+      // Update local current points
       await updateCurrentPoints()
       
       // Show success message
       const minutes = Math.floor(result.durationSeconds / 60)
-      alert(`✅ Charging started on Port ${portNumber}!\n\nDuration: ${minutes} minutes\n\nYou can now use other ports or redeem more points.`)
+      Swal.fire({
+        title: 'Charging Started!',
+        html: `✅ Port ${portNumber} is now active.<br><br><b>Duration:</b> ${minutes} minutes<br><b>Points Used:</b> ${pointsNum}`,
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false,
+        background: '#ffffff',
+        color: '#0f172a'
+      })
       
       // Return to home immediately so user can use other ports
       currentView.value = 'home'
     } else {
-      alert(result.error || 'Unable to start charging. Please consult technicians or personnel.')
+      Swal.fire({
+        title: 'Error',
+        text: result.error || 'Failed to start charging',
+        icon: 'error',
+        background: '#ffffff',
+        color: '#0f172a'
+      })
     }
-  } catch (error) {
-    console.error('Error activating charging:', error)
-    alert('Unable to start charging. Please consult technicians or personnel.')
+  } catch (err) {
+    console.error('Error in selectPort:', err)
+    Swal.fire({
+      title: 'System Error',
+      text: 'An unexpected error occurred while starting the port.',
+      icon: 'error',
+      background: '#ffffff',
+      color: '#0f172a'
+    })
   }
 }
 
