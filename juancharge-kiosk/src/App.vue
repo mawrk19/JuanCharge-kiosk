@@ -6,6 +6,8 @@ import PointsDisplay from './components/PointsDisplay.vue'
 import StorePointView from './components/StorePointView.vue'
 import RedeemView from './components/RedeemView.vue'
 import ChargingProgress from './components/ChargingProgress.vue'
+import PortQRModal from './components/PortQRModal.vue'
+import { QrCode } from 'lucide-vue-next'
 
 const currentView = ref('home') // home, selectPort, confirmation, storePoint, redeem, charging
 const selectedPort = ref(null)
@@ -15,6 +17,8 @@ const storedPoints = ref(0)
 const portStatuses = ref([null, null, null]) // Status for ports 1, 2, 3
 const currentPoints = ref(0)
 const chargingDuration = ref(0)
+const kioskCode = ref('UCC-Kiosk-0001')
+const activeQRPort = ref(null)
 let statusInterval = null
 
 // Poll port statuses
@@ -56,8 +60,18 @@ onMounted(async () => {
   
   // Initial status fetch
   updatePortStatuses()
+  
+  // Fetch kiosk config
+  if (window.electronAPI) {
+    window.electronAPI.invoke('get-kiosk-config').then(config => {
+      if (config && config.kiosk_code) {
+        kioskCode.value = config.kiosk_code
+      }
+    })
+  }
+
   // Reduced polling to 10 seconds as fallback (events handle real-time updates)
-  statusInterval = setInterval(updatePortStatuses, 10000)
+  statusInterval = setInterval(updatePortStatuses, 1000) // Fast polling in dev? Actually 10s is fine.
 })
 
 onUnmounted(() => {
@@ -319,22 +333,25 @@ function isPortDisabled(portNumber) {
           <h2 class="view-title">Select Charging Port</h2>
           
           <div class="ports-grid">
-            <button 
-              v-for="port in [1, 2, 3]" 
-              :key="port"
-              :class="['port-card glass-panel', getPortButtonClass(port)]" 
-              @click="selectPort(port)"
-              :disabled="isPortDisabled(port)"
-            >
-              <div class="port-icon-wrapper">
-                <div class="cable-icon"><Cable :size="40" /></div>
-              </div>
-              <div class="port-info">
-                <span class="port-number">Port {{ port }}</span>
-                <span class="port-status">{{ getPortButtonText(port).status }}</span>
-                <span class="port-subtext">{{ getPortButtonText(port).subtext }}</span>
-              </div>
-            </button>
+            <div v-for="port in [1, 2, 3]" :key="port" class="port-tile">
+              <button 
+                :class="['port-card glass-panel', getPortButtonClass(port)]" 
+                @click="selectPort(port)"
+                :disabled="isPortDisabled(port)"
+              >
+                <div class="port-icon-wrapper">
+                  <div class="cable-icon"><Cable :size="40" /></div>
+                </div>
+                <div class="port-info">
+                  <span class="port-number">Port {{ port }}</span>
+                  <span class="port-status">{{ getPortButtonText(port).status }}</span>
+                  <span class="port-subtext">{{ getPortButtonText(port).subtext }}</span>
+                </div>
+              </button>
+              <button class="qr-tip-btn glass-panel" @click="activeQRPort = port">
+                <QrCode :size="16" /> Scan to Pay
+              </button>
+            </div>
           </div>
           
           <button class="back-btn" @click="resetToHome">
@@ -383,6 +400,14 @@ function isPortDisabled(portNumber) {
       class="points-hidden" 
     />
     
+    <!-- Port QR Modal -->
+    <PortQRModal 
+      v-if="activeQRPort" 
+      :port="activeQRPort" 
+      :kioskCode="kioskCode"
+      @close="activeQRPort = null"
+    />
+
     <!-- Background Decor -->
     <div class="bg-gradient-orb orb-1"></div>
     <div class="bg-gradient-orb orb-2"></div>
@@ -499,7 +524,7 @@ function isPortDisabled(portNumber) {
 
 /* Home View */
 .home-view {
-  margin-top: -40px; /* Optical adjustment */
+  margin-top: 0; /* Remove negative adjustment to prevent overlap */
 }
 
 .hero-section {
@@ -620,8 +645,36 @@ function isPortDisabled(portNumber) {
 .ports-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 20px;
   width: 100%;
+}
+
+.port-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qr-tip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: white;
+  border: 1px solid rgba(17, 153, 142, 0.2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qr-tip-btn:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-2px);
 }
 
 .port-card {
@@ -771,7 +824,7 @@ function isPortDisabled(portNumber) {
   
   /* Home View Compact */
   .home-view {
-    margin-top: -10px;
+    margin-top: 0;
   }
   
   .action-card {
@@ -799,8 +852,13 @@ function isPortDisabled(portNumber) {
   }
   
   .port-card {
-    padding: 15px;
-    height: 180px;
+    padding: 10px;
+    height: 150px;
+  }
+  
+  .qr-tip-btn {
+    padding: 5px;
+    font-size: 0.75rem;
   }
   
   .port-icon-wrapper {

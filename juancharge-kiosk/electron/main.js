@@ -205,6 +205,14 @@ ipcMain.handle('get-latest-points', async () => {
   }
 });
 
+// IPC handler to get kiosk config
+ipcMain.handle('get-kiosk-config', async () => {
+  return {
+    kiosk_code: KIOSK_CODE,
+    api_base_url: API_BASE_URL
+  };
+});
+
 // IPC handler to generate signed voucher (JWT)
 ipcMain.handle('generate-signed-voucher', async (event, { amount }) => {
   try {
@@ -222,6 +230,7 @@ ipcMain.handle('generate-signed-voucher', async (event, { amount }) => {
     const innerSignature = generateSignature(stringToSign);
 
     const jwt = await new jose.SignJWT({
+      action: 'store_points',
       kiosk_code: KIOSK_CODE,
       txn_id: voucherId,
       points: amount,
@@ -668,7 +677,7 @@ setInterval(async () => {
 }, 60000); // Check every minute
 
 // ============================================
-// HEARTBEAT JOB
+// HEARTBEAT JOB (Every 5 seconds for responsive remote commands)
 // ============================================
 setInterval(async () => {
   try {
@@ -684,23 +693,48 @@ setInterval(async () => {
       ports: portsPayload
     };
 
-    // Debug Log
-    console.log('[HEARTBEAT] KIOSK_CODE:', KIOSK_CODE);
-    // console.log('[HEARTBEAT] Sending payload:', JSON.stringify(payload));
-
     const response = await fetch(`${API_BASE_URL}/kiosk/heartbeat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) {
+    if (response.ok) {
+      const data = await response.json();
+
+      // Handle Remote Activations (Seamless Port Activation)
+      if (data && data.pending_activations && Array.isArray(data.pending_activations)) {
+        for (const activation of data.pending_activations) {
+          const { port, points, duration_seconds } = activation;
+
+          console.log(`[REMOTE ACTIVATION] Received for Port ${port} - ${points} pts`);
+
+          // Only activate if not already active to avoid double activation
+          const currentStatus = statuses[port - 1];
+          if (currentStatus && !currentStatus.active) {
+            const activationResult = await relayController.activateRelay(port, duration_seconds || (points * 60));
+
+            if (activationResult.success) {
+              console.log(`[REMOTE ACTIVATION] Successfully started Port ${port}`);
+
+              // Create transaction record for audit
+              createTransaction('remote_activation', port);
+
+              // Emit to frontend to show charging state if needed
+              emitToRenderer('charging-status-changed', {
+                statuses: relayController.getAllRelayStatuses()
+              });
+            }
+          }
+        }
+      }
+    } else {
       console.error(`[HEARTBEAT] Failed: ${response.status} ${response.statusText}`);
     }
   } catch (error) {
     console.error('[HEARTBEAT] Error:', error.message);
   }
-}, 60000); // 60 seconds
+}, 5000); // 5 seconds
 
 app.whenReady().then(() => {
   createWindow();
