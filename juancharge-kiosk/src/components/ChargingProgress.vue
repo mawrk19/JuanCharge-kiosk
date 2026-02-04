@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Check, Zap } from 'lucide-vue-next'
+import { Check, Zap, XCircle } from 'lucide-vue-next'
+import Swal from 'sweetalert2'
 
 const props = defineProps({
   port: {
@@ -13,7 +14,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['complete'])
+const emit = defineEmits(['complete', 'cancel'])
 
 const remainingSeconds = ref(props.totalSeconds)
 const isComplete = ref(false)
@@ -73,6 +74,64 @@ onUnmounted(() => {
     clearInterval(statusInterval)
   }
 })
+
+const handleCancelCharging = async () => {
+  const result = await Swal.fire({
+    title: 'Cancel Charging Session?',
+    html: `<p style="font-size: 1.05rem; margin-bottom: 10px;">Are you sure you want to stop charging on <strong>Port ${props.port}</strong>?</p>
+           <p style="color: #dc2626; font-weight: 600; margin-top: 10px;">⚠️ Your used points will NOT be refunded!</p>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Stop Charging',
+    cancelButtonText: 'Continue Charging',
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#11998e',
+    background: '#ffffff',
+    color: '#0f172a',
+    reverseButtons: true
+  })
+
+  if (result.isConfirmed) {
+    try {
+      const deactivateResult = await window.electronAPI.invoke('deactivate-charging', {
+        port: props.port
+      })
+
+      if (deactivateResult.success) {
+        clearInterval(statusInterval)
+        
+        await Swal.fire({
+          title: 'Charging Stopped',
+          text: `Port ${props.port} has been deactivated.`,
+          icon: 'info',
+          timer: 2000,
+          showConfirmButton: false,
+          background: '#ffffff',
+          color: '#0f172a'
+        })
+
+        emit('cancel')
+      } else {
+        Swal.fire({
+          title: 'Error',
+          text: deactivateResult.error || 'Failed to stop charging',
+          icon: 'error',
+          background: '#ffffff',
+          color: '#0f172a'
+        })
+      }
+    } catch (error) {
+      console.error('Error canceling charging:', error)
+      Swal.fire({
+        title: 'Error',
+        text: 'An unexpected error occurred',
+        icon: 'error',
+        background: '#ffffff',
+        color: '#0f172a'
+      })
+    }
+  }
+}
 </script>
 
 <template>
@@ -124,6 +183,12 @@ onUnmounted(() => {
           {{ isComplete ? 'Thank you for using JuanCharge!' : `${Math.round(progressPercentage)}% Charged` }}
         </p>
       </div>
+      
+      <!-- Cancel Button (only show when charging, not when complete) -->
+      <button v-if="!isComplete" class="cancel-btn" @click="handleCancelCharging">
+        <XCircle :size="20" style="margin-right: 8px" />
+        Cancel Session
+      </button>
     </div>
   </div>
 </template>
@@ -209,6 +274,33 @@ onUnmounted(() => {
 .status-sub {
   font-size: 1.1rem;
   color: var(--secondary);
+}
+
+.cancel-btn {
+  margin-top: 30px;
+  padding: 12px 30px;
+  background: rgba(220, 38, 38, 0.1);
+  border: 2px solid #dc2626;
+  color: #dc2626;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cancel-btn:hover {
+  background: #dc2626;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(220, 38, 38, 0.3);
+}
+
+.cancel-btn:active {
+  transform: translateY(0);
 }
 
 @keyframes scaleIn {

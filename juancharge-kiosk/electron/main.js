@@ -396,6 +396,45 @@ ipcMain.handle('get-charging-status', async () => {
   }
 });
 
+// IPC handler to deactivate/cancel charging
+ipcMain.handle('deactivate-charging', async (event, { port }) => {
+  try {
+    // Validate input
+    if (!port || ![1, 2, 3].includes(port)) {
+      return { success: false, error: 'Invalid port number' };
+    }
+
+    // Check if port is active
+    const portStatus = relayController.getRelayStatus(port);
+    if (!portStatus.active) {
+      return { success: false, error: `Port ${port} is not active` };
+    }
+
+    // Deactivate relay
+    const result = relayController.deactivateRelay(port, false); // false = manual deactivation
+
+    if (!result.success) {
+      return result;
+    }
+
+    // Update charging session status in database
+    db.prepare(`
+      UPDATE charging_sessions 
+      SET status = 'cancelled', end_time = ? 
+      WHERE port = ? AND status = 'active'
+    `).run(new Date().toISOString(), port);
+
+    return {
+      success: true,
+      port,
+      message: 'Charging session cancelled'
+    };
+  } catch (error) {
+    console.error('Error deactivating charging:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // IPC handler for QR-based redemption
 ipcMain.handle('redeem-points', async (event, { userId, points, timestamp }) => {
   try {

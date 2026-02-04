@@ -21,10 +21,10 @@ const RELAY_PINS = {
 };
 
 // RELAY SIGNAL POLARITY
-// Active High: 1 = ON, 0 = OFF (Default)
-// Active Low:  0 = ON, 1 = OFF (Most common for Pi Relay Modules)
-const RELAY_ON = process.env.RELAY_ACTIVE_LOW === 'true' ? 0 : 1;
-const RELAY_OFF = process.env.RELAY_ACTIVE_LOW === 'true' ? 1 : 0;
+// Active High: 1 = ON, 0 = OFF
+// Active Low:  0 = ON, 1 = OFF (Most common for Pi Relay Modules - DEFAULT)
+const RELAY_ON = process.env.RELAY_ACTIVE_HIGH === 'true' ? 1 : 0;
+const RELAY_OFF = process.env.RELAY_ACTIVE_HIGH === 'true' ? 0 : 1;
 
 // Detect platform
 const isRaspberryPi = () => {
@@ -65,7 +65,8 @@ const emitStatusChange = () => {
   }
 };
 
-let Gpio = null;
+let lgpio = null;
+let gpioHandle = null;
 let relayGpios = {};
 let initPromise = null;
 
@@ -82,9 +83,14 @@ const initializeGpio = async () => {
     try {
       console.log('[RELAY] Initializing GPIO with polarity:', RELAY_ON === 0 ? 'Active-Low' : 'Active-High');
 
-      // Dynamically import onoff
-      const onoffModule = await import('onoff');
-      Gpio = onoffModule.Gpio;
+      // Dynamically import lgpio for Raspberry Pi 5
+      const lgpioModule = await import('lgpio');
+      lgpio = lgpioModule.default;
+      const GpioFlag = lgpioModule.GpioFlag;
+
+      // Open GPIO chip (chip 0 is the main GPIO on RPi 5)
+      gpioHandle = lgpio.gpiochipOpen(0);
+      console.log(`[RELAY] GPIO chip opened: handle ${gpioHandle}`);
 
       // Initialize GPIO pins for all relays
       for (const [port, pin] of Object.entries(RELAY_PINS)) {
@@ -92,10 +98,12 @@ const initializeGpio = async () => {
         console.log(`[RELAY] Setting up Port ${portNum} on GPIO ${pin}...`);
 
         try {
-          relayGpios[portNum] = new Gpio(pin, 'out');
-          // Ensure relay starts in OFF state
-          relayGpios[portNum].writeSync(RELAY_OFF);
-          console.log(`[RELAY] SUCCESS: Port ${portNum} initialized.`);
+          // Claim GPIO line as output with Active-Low flag if needed
+          const flags = (RELAY_ON === 0) ? GpioFlag.SET_ACTIVE_LOW : 0;
+          // Initial level: true = high (on for active-high, off for active-low with flag)
+          lgpio.gpioClaimOutput(gpioHandle, pin, flags, false);
+          relayGpios[portNum] = pin;
+          console.log(`[RELAY] SUCCESS: Port ${portNum} initialized (flags: ${flags}).`);
         } catch (gpioErr) {
           console.error(`[RELAY] FAILED to initialize Port ${portNum}:`, gpioErr.message);
         }
@@ -103,7 +111,7 @@ const initializeGpio = async () => {
 
       return true;
     } catch (error) {
-      console.error('[RELAY] CRITICAL: Failed to load onoff module:', error.message);
+      console.error('[RELAY] CRITICAL: Failed to load lgpio module:', error.message);
       console.log('[RELAY] Falling back to mock mode');
       return false;
     }
@@ -140,15 +148,15 @@ export const activateRelay = async (port, durationSeconds) => {
 
       // Force port to number to match relayGpios keys
       const portNum = parseInt(port);
-      const gpio = relayGpios[portNum];
+      const gpioPin = relayGpios[portNum];
 
-      if (!gpio) {
+      if (gpioPin === undefined) {
         throw new Error(`GPIO for Port ${portNum} is not initialized or failed to open.`);
       }
 
-      // Turn relay ON
-      gpio.writeSync(RELAY_ON);
-      console.log(`[RELAY] Port ${portNum} activated (Signal: ${RELAY_ON})`);
+      // Turn relay ON (true = high logical level)
+      lgpio.gpioWrite(gpioHandle, gpioPin, true);
+      console.log(`[RELAY] Port ${portNum} activated (GPIO ${gpioPin})`);
     } catch (error) {
       console.error(`[RELAY] Failed to activate Port ${port}:`, error.message);
       return { success: false, error: error.message };
@@ -216,13 +224,13 @@ export const deactivateRelay = (port, isAutoShutoff = false) => {
   } else {
     try {
       const portNum = parseInt(port);
-      const gpio = relayGpios[portNum];
-      if (gpio) {
-        // Turn relay OFF
-        gpio.writeSync(RELAY_OFF);
+      const gpioPin = relayGpios[portNum];
+      if (gpioPin !== undefined) {
+        // Turn relay OFF (false = low logical level)
+        lgpio.gpioWrite(gpioHandle, gpioPin, false);
       }
       const reason = isAutoShutoff ? 'auto-shutoff' : 'manual deactivation';
-      console.log(`[RELAY] Port ${portNum} deactivated (Signal: ${RELAY_OFF}) - ${reason}`);
+      console.log(`[RELAY] Port ${portNum} deactivated (GPIO ${gpioPin}) - ${reason}`);
     } catch (error) {
       console.error(`[RELAY] Failed to deactivate Port ${port}:`, error.message);
       return { success: false, error: error.message };
@@ -287,14 +295,20 @@ export const cleanup = () => {
   }
 
   // Unexport GPIO pins (only on Raspberry Pi)
-  if (!USE_MOCK && Gpio) {
-    for (const [port, gpio] of Object.entries(relayGpios)) {
+  if (!USE_MOCK && lgpio && gpioHandle !== null) {
+    for (const [port, gpioPin] of Object.entries(relayGpios)) {
       try {
-        gpio.unexport();
-        console.log(`[RELAY] Unexported GPIO for Port ${port}`);
+        lgpio.gpioFree(gpioHandle, gpioPin);
+        console.log(`[RELAY] Freed GPIO ${gpioPin} for Port ${port}`);
       } catch (error) {
-        console.error(`[RELAY] Error unexporting Port ${port}:`, error.message);
+        console.error(`[RELAY] Error freeing GPIO for Port ${port}:`, error.message);
       }
+    }
+    try {
+      lgpio.gpiochipClose(gpioHandle);
+      console.log(`[RELAY] Closed GPIO chip`);
+    } catch (error) {
+      console.error(`[RELAY] Error closing GPIO chip:`, error.message);
     }
   }
 };

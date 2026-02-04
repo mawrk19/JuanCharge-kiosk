@@ -216,6 +216,25 @@ async function selectPort(portNumber) {
 
   const pointsNum = parseInt(pointsToUse)
   
+  // Warning about non-refundable points
+  const confirmStart = await Swal.fire({
+    title: '⚠️ Important Notice',
+    html: `<p style="font-size: 1.1rem; margin-bottom: 15px;">You are about to use <strong>${pointsNum} points</strong> for charging.</p>
+           <p style="color: #dc2626; font-weight: 600; font-size: 1rem;">⚠️ Points cannot be refunded once charging starts!</p>
+           <p style="margin-top: 10px; font-size: 0.95rem; color: #64748b;">You can cancel the session early, but used points will not be returned.</p>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'I Understand, Start Now',
+    cancelButtonText: 'Go Back',
+    confirmButtonColor: '#11998e',
+    cancelButtonColor: '#94a3b8',
+    background: '#ffffff',
+    color: '#0f172a',
+    reverseButtons: true
+  })
+
+  if (!confirmStart.isConfirmed) return;
+  
   // Activate charging
   try {
     const result = await window.electronAPI.invoke('activate-charging', {
@@ -478,7 +497,8 @@ function isPortDisabled(portNumber) {
           <ChargingProgress 
             :port="selectedPort" 
             :totalSeconds="chargingDuration"
-            @complete="onChargingComplete" 
+            @complete="onChargingComplete"
+            @cancel="resetToHome" 
           />
         </div>
       </Transition>
