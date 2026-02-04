@@ -186,8 +186,13 @@ ipcMain.handle('get-latest-points', async () => {
             const points = item.points || 0;
             newPointsAdded += points;
 
+            // Handle item_type as array or string
+            const itemType = Array.isArray(item.item_type) 
+              ? item.item_type.join(', ') 
+              : (item.item_type || 'unknown');
+
             db.prepare('INSERT INTO transaction_items (transaction_id, file_name, file_index, item_type, points, date) VALUES (?, ?, ?, ?, ?, ?)')
-              .run(txn.id, file, index, item.item_type || 'unknown', points, item.date || new Date().toISOString());
+              .run(txn.id, file, index, itemType, points, item.date || new Date().toISOString());
           }
         });
       } catch (err) {
