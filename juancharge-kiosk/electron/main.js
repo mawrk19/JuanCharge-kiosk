@@ -372,6 +372,9 @@ ipcMain.handle('activate-charging', async (event, { port, points }) => {
     // Deduct points from active transaction
     const txn = getActiveTransaction();
     if (txn) {
+      if (txn.total_points < points) {
+        return { success: false, error: 'Insufficient balance' };
+      }
       db.prepare('UPDATE transactions SET total_points = total_points - ? WHERE id = ?')
         .run(points, txn.id);
     }
@@ -575,6 +578,7 @@ async function checkAndEmitPointsUpdate() {
     const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
 
     if (!fs.existsSync(trackedJsonPath)) {
+      console.log('[POINTS CHECK] Tracked_json folder missing');
       return;
     }
 
@@ -605,6 +609,7 @@ async function checkAndEmitPointsUpdate() {
           if (!exists) {
             const points = item.points || 0;
             newPointsAdded += points;
+            console.log(`[POINTS CHECK] New item: ${item.item_type} +${points}pts`);
 
             db.prepare('INSERT INTO transaction_items (transaction_id, file_name, file_index, item_type, points, date) VALUES (?, ?, ?, ?, ?, ?)')
               .run(txn.id, file, index, item.item_type || 'unknown', points, item.date || new Date().toISOString());
@@ -747,6 +752,10 @@ setInterval(async () => {
     if (response.ok) {
       const data = await response.json();
 
+      if (data && (data.pending_activations?.length > 0 || data.pending_deactivations?.length > 0)) {
+        console.log('[HEARTBEAT] Command received:', JSON.stringify(data));
+      }
+
       // Handle Remote Activations (Seamless Port Activation)
       if (data && data.pending_activations && Array.isArray(data.pending_activations)) {
         for (const activation of data.pending_activations) {
@@ -765,7 +774,9 @@ setInterval(async () => {
 
               // Record session and transaction
               recordChargingSession(port, points || 0, durationSecs, activationResult.endTime);
-              createTransaction('remote_activation', port, -(points || 0)); // Negative points for "usage" transaction
+              // REMOTE activation should NOT deduct from local BIN balance.
+              // It uses points from the CLOUD account. We just log it as 0 for local balance.
+              createTransaction('remote_activation', port, 0);
 
               // Emit detailed activation event
               emitToRenderer('remote-activation-started', {
