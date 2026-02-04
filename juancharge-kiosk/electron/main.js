@@ -734,6 +734,7 @@ setInterval(async () => {
     const payload = {
       kiosk_code: KIOSK_CODE,
       status: 'online',
+      timestamp: Date.now(),
       ports: portsPayload
     };
 
