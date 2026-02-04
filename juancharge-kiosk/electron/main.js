@@ -783,6 +783,37 @@ setInterval(async () => {
           }
         }
       }
+
+      // Handle Remote Deactivations (Cancellations)
+      if (data && data.pending_deactivations && Array.isArray(data.pending_deactivations)) {
+        for (const deactivation of data.pending_deactivations) {
+          const { port } = deactivation;
+          console.log(`[REMOTE DEACTIVATION] Received for Port ${port}`);
+
+          const currentStatus = statuses[port - 1];
+          if (currentStatus && currentStatus.active) {
+            const result = relayController.deactivateRelay(port, false); // false = manual/remote
+            if (result.success) {
+              console.log(`[REMOTE DEACTIVATION] Successfully stopped Port ${port}`);
+
+              // Update charging session status in database
+              db.prepare(`
+                UPDATE charging_sessions 
+                SET status = 'cancelled', end_time = ? 
+                WHERE port = ? AND status = 'active'
+              `).run(new Date().toISOString(), port);
+
+              // Emit event for UI feedback
+              emitToRenderer('remote-deactivation-started', { port });
+
+              // Emit status change for general UI update
+              emitToRenderer('charging-status-changed', {
+                statuses: relayController.getAllRelayStatuses()
+              });
+            }
+          }
+        }
+      }
     } else {
       console.error(`[HEARTBEAT] Failed: ${response.status} ${response.statusText}`);
     }

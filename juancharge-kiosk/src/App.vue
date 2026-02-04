@@ -78,6 +78,29 @@ onMounted(async () => {
     });
     console.log('✅ Registered remote-activation-started event listener');
 
+    window.electronAPI.on('remote-deactivation-started', (data) => {
+      console.log('[REMOTE EVENT] Received deactivation:', data);
+      Swal.fire({
+        title: 'Session Cancelled',
+        text: `Charging on Port ${data.port} has been cancelled remotely.`,
+        icon: 'info',
+        timer: 4000,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        background: '#ffffff',
+        color: '#0f172a'
+      });
+      
+      if (currentView.value === 'selectPort' || currentView.value === 'charging') {
+        updatePortStatuses();
+        // If we were in the charging view for THIS specific port, we should go back
+        if (currentView.value === 'charging' && selectedPort.value === data.port) {
+          currentView.value = 'home';
+        }
+      }
+    });
+
     window.electronAPI.on('points-updated', (data) => {
       console.log('[POINTS EVENT] Syncing points:', data.points);
       currentPoints.value = data.points;
