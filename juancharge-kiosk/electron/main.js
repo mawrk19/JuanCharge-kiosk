@@ -372,11 +372,14 @@ ipcMain.handle('activate-charging', async (event, { port, points }) => {
     // Deduct points from active transaction
     const txn = getActiveTransaction();
     if (txn) {
-      if (txn.total_points < points) {
+      // CRITICAL: Prevent negative points
+      const pointsToDeduct = Math.max(0, points);
+      if (txn.total_points < pointsToDeduct) {
         return { success: false, error: 'Insufficient balance' };
       }
       db.prepare('UPDATE transactions SET total_points = total_points - ? WHERE id = ?')
-        .run(points, txn.id);
+        .run(pointsToDeduct, txn.id);
+      console.log(`[POINTS] Deducted ${pointsToDeduct} from balance. New balance: ${txn.total_points - pointsToDeduct}`);
     }
 
     return {

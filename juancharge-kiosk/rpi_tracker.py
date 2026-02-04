@@ -442,12 +442,12 @@ def get_points_for_item(item_class):
     """Returns points for an item based on its class name (case-insensitive)"""
     item_lower = item_class.lower()
     # Pet/plastic bottles = 1 point
-    # Check for "bottle" or "battles" (handles typos) and "pet" or "plastic"
-    if ('bottle' in item_lower or 'battles' in item_lower) and ('pet' in item_lower or 'plastic' in item_lower):
+    # Check for "bottle", "battles", "bottles", "pet", or "plastic"
+    if any(x in item_lower for x in ['bottle', 'battles', 'bottles', 'pet', 'plastic']):
         return 1
     # Tin/cans = 2 points
     # Check for "tin", "can", "cans", or variations (handles "tin/cans", "tin can", etc.)
-    elif 'tin' in item_lower or 'can' in item_lower:
+    elif any(x in item_lower for x in ['tin', 'can', 'cans']):
         return 2
     else:
         return 0  # Default: no points for unrecognized items
