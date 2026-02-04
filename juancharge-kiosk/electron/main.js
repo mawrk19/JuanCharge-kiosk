@@ -129,12 +129,21 @@ function getActiveTransaction() {
   return db.prepare('SELECT * FROM transactions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1').get();
 }
 
-function createTransaction(action = 'initial', port = null) {
+function createTransaction(action = 'initial', port = null, points = 0) {
   const id = Date.now().toString();
   const startTime = new Date().toISOString();
-  db.prepare('INSERT INTO transactions (id, action, port, start_time, total_points) VALUES (?, ?, ?, ?, 0)')
-    .run(id, action, port, startTime);
+  db.prepare('INSERT INTO transactions (id, action, port, start_time, total_points) VALUES (?, ?, ?, ?, ?)')
+    .run(id, action, port, startTime, points);
   return id;
+}
+
+function recordChargingSession(port, points, durationSeconds, endTime) {
+  const sessionId = Date.now().toString();
+  db.prepare(`
+    INSERT INTO charging_sessions (id, port, points, duration_seconds, start_time, end_time, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'active')
+  `).run(sessionId, port, points, durationSeconds, new Date().toISOString(), endTime);
+  return sessionId;
 }
 
 // IPC handler to get latest points
@@ -358,11 +367,7 @@ ipcMain.handle('activate-charging', async (event, { port, points }) => {
     }
 
     // Create charging session record
-    const sessionId = Date.now().toString();
-    db.prepare(`
-      INSERT INTO charging_sessions (id, port, points, duration_seconds, start_time, end_time, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'active')
-    `).run(sessionId, port, points, durationSeconds, new Date().toISOString(), result.endTime);
+    const sessionId = recordChargingSession(port, points, durationSeconds, result.endTime);
 
     // Deduct points from active transaction
     const txn = getActiveTransaction();
@@ -751,15 +756,25 @@ setInterval(async () => {
           // Only activate if not already active to avoid double activation
           const currentStatus = statuses[port - 1];
           if (currentStatus && !currentStatus.active) {
-            const activationResult = await relayController.activateRelay(port, duration_seconds || (points * 60));
+            const durationSecs = duration_seconds || (points * 60);
+            const activationResult = await relayController.activateRelay(port, durationSecs);
 
             if (activationResult.success) {
               console.log(`[REMOTE ACTIVATION] Successfully started Port ${port}`);
 
-              // Create transaction record for audit
-              createTransaction('remote_activation', port);
+              // Record session and transaction
+              recordChargingSession(port, points || 0, durationSecs, activationResult.endTime);
+              createTransaction('remote_activation', port, -(points || 0)); // Negative points for "usage" transaction
 
-              // Emit to frontend to show charging state if needed
+              // Emit detailed activation event
+              emitToRenderer('remote-activation-started', {
+                port,
+                points: points || 0,
+                durationSeconds: durationSecs,
+                endTime: activationResult.endTime
+              });
+
+              // Emit status change for general UI update
               emitToRenderer('charging-status-changed', {
                 statuses: relayController.getAllRelayStatuses()
               });

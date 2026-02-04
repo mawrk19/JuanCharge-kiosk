@@ -6,7 +6,7 @@ import PointsDisplay from './components/PointsDisplay.vue'
 import StorePointView from './components/StorePointView.vue'
 import RedeemView from './components/RedeemView.vue'
 import ChargingProgress from './components/ChargingProgress.vue'
-import { QrCode } from 'lucide-vue-next'
+import { QrCode as QrCodeIcon } from 'lucide-vue-next'
 
 const currentView = ref('home') // home, selectPort, confirmation, storePoint, redeem, charging
 const selectedPort = ref(null)
@@ -56,6 +56,27 @@ onMounted(async () => {
       }
     });
     console.log('✅ Registered charging-status-changed event listener');
+
+    window.electronAPI.on('remote-activation-started', (data) => {
+      console.log('[REMOTE EVENT] Received activation:', data);
+      Swal.fire({
+        title: 'Remote Activation',
+        text: `Port ${data.port} has been activated remotely for ${data.points} points (${Math.floor(data.durationSeconds / 60)} mins).`,
+        icon: 'success',
+        timer: 5000,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        background: '#ffffff',
+        color: '#0f172a'
+      });
+      
+      // If we are currently in selectPort view, we might want to refresh
+      if (currentView.value === 'selectPort') {
+        updatePortStatuses();
+      }
+    });
+    console.log('✅ Registered remote-activation-started event listener');
   }
   
   // Initial status fetch
@@ -440,7 +461,6 @@ function isPortDisabled(portNumber) {
         <!-- Select Port View -->
         <div v-else-if="currentView === 'selectPort'" class="view-container select-port-view" key="selectPort">
           <h2 class="view-title">Select Charging Port</h2>
-          
           <div class="ports-grid">
             <button 
               v-for="port in [1, 2, 3]" 
@@ -753,7 +773,14 @@ function isPortDisabled(portNumber) {
 .ports-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 20px;
+  width: 100%;
+}
+
+.port-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
   width: 100%;
 }
 
@@ -762,8 +789,8 @@ function isPortDisabled(portNumber) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30px;
-  height: 250px;
+  padding: 20px;
+  height: 200px;
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.3s ease;
@@ -771,6 +798,41 @@ function isPortDisabled(portNumber) {
   position: relative;
   overflow: hidden;
   background: white;
+  width: 100%;
+}
+
+.port-qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.port-card-wrapper:hover .port-qr-section {
+  border-color: var(--secondary);
+  box-shadow: 0 4px 15px rgba(56, 239, 125, 0.2);
+}
+
+.port-qr-img {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  background: white;
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.qr-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .port-card.available {
