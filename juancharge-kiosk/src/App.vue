@@ -77,6 +77,11 @@ onMounted(async () => {
       }
     });
     console.log('✅ Registered remote-activation-started event listener');
+
+    window.electronAPI.on('points-updated', (data) => {
+      console.log('[POINTS EVENT] Syncing points:', data.points);
+      currentPoints.value = data.points;
+    });
   }
   
   // Initial status fetch
@@ -91,8 +96,11 @@ onMounted(async () => {
     })
   }
 
+  // Sync points every 2 seconds to ensure UI stays updated
+  setInterval(updateCurrentPoints, 2000)
+
   // Reduced polling to 10 seconds as fallback (events handle real-time updates)
-  statusInterval = setInterval(updatePortStatuses, 1000) // Fast polling in dev? Actually 10s is fine.
+  statusInterval = setInterval(updatePortStatuses, 5000)
 })
 
 onUnmounted(() => {
@@ -140,7 +148,21 @@ const goToStorePoint = async () => {
     });
     return;
   }
-  
+  // 2. Ask for confirmation
+  const confirmResult = await Swal.fire({
+    title: 'Store Points?',
+    text: `Are you sure you want to store ${currentPoints.value} points for later? This will end your current session.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Store Them',
+    cancelButtonText: 'No, Keep Using',
+    confirmButtonColor: '#11998e',
+    background: '#ffffff',
+    color: '#0f172a'
+  });
+
+  if (!confirmResult.isConfirmed) return;
+
   storedPoints.value = currentPoints.value
   
   try {
@@ -440,7 +462,11 @@ function isPortDisabled(portNumber) {
               </div>
             </button>
             
-            <button class="action-card secondary glass-panel" @click="goToStorePoint">
+            <button 
+              class="action-card secondary glass-panel" 
+              @click="goToStorePoint"
+              :disabled="currentPoints <= 0"
+            >
               <div class="icon-wrapper"><Download :size="48" /></div>
               <div class="card-content">
                 <span class="card-title">Store Points</span>
@@ -694,6 +720,14 @@ function isPortDisabled(portNumber) {
 
 .action-card:active {
   transform: scale(0.98);
+}
+
+.action-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .action-card.primary {

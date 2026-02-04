@@ -75,9 +75,6 @@ function handleCancel() {
     </div>
     
     <div class="actions">
-      <button class="back-btn" @click="handleCancel">
-        <ArrowLeft :size="20" style="margin-right: 8px" /> Back
-      </button>
       <button class="done-btn" @click="handleDone">
         <CheckCircle :size="20" style="margin-right: 8px" /> Done
       </button>
@@ -116,6 +113,7 @@ function handleCancel() {
 
 .done-btn {
   color: var(--primary);
+  background: white;
 }
 
 .back-btn {
@@ -129,24 +127,24 @@ function handleCancel() {
 }
 
 .view-title {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: 700;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
 .card {
-  padding: 40px;
+  padding: 30px;
   width: 100%;
   max-width: 450px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;
+  gap: 20px;
 }
 
 .qr-box {
   background: white;
-  padding: 15px;
+  padding: 12px;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
@@ -159,11 +157,11 @@ function handleCancel() {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .points-badge .value {
-  font-size: 3rem;
+  font-size: 2.5rem;
   font-weight: 800;
   color: var(--secondary);
   line-height: 1;
@@ -171,40 +169,17 @@ function handleCancel() {
 }
 
 .points-badge .label {
-  font-size: 1rem;
+  font-size: 0.9rem;
   text-transform: uppercase;
   color: var(--text-muted);
   letter-spacing: 2px;
 }
 
 .instruction {
-  font-size: 1.1rem;
-  line-height: 1.6;
+  font-size: 1rem;
+  line-height: 1.5;
   color: var(--text-main);
   opacity: 0.9;
-}
-
-.done-btn {
-  margin-top: 30px;
-  padding: 15px 50px;
-  background: white;
-  color: var(--primary);
-  border: none;
-  font-size: 1.2rem;
-  font-weight: 700;
-  border-radius: var(--radius-xl);
-  cursor: pointer;
-  box-shadow: var(--shadow-lg);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.done-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-}
-
-.done-btn:active {
-  transform: translateY(-1px);
 }
 
 @media (max-height: 480px) {
