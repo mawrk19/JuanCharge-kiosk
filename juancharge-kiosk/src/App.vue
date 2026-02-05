@@ -7,6 +7,7 @@ import StorePointView from './components/StorePointView.vue'
 import RedeemView from './components/RedeemView.vue'
 import ChargingProgress from './components/ChargingProgress.vue'
 import { QrCode as QrCodeIcon } from 'lucide-vue-next'
+import IdleOverlay from './components/IdleOverlay.vue'
 
 const currentView = ref('home') // home, selectPort, confirmation, storePoint, redeem, charging
 const selectedPort = ref(null)
@@ -19,7 +20,12 @@ const chargingDuration = ref(0)
 const kioskCode = ref('UCC-Kiosk-0001')
 const devModeClicks = ref(0)
 const isDevMode = ref(false)
+const isSimulating = ref(false)
+const isIdle = ref(false)
+const lastActivity = ref(Date.now())
+const isShowingIdlePrompt = ref(false)
 let statusInterval = null
+let idleTimer = null
 
 // Poll port statuses
 const updatePortStatuses = async () => {
@@ -122,14 +128,77 @@ onMounted(async () => {
   // Sync points every 2 seconds to ensure UI stays updated
   setInterval(updateCurrentPoints, 2000)
 
+  // Idle Tracking
+  const activityEvents = ['mousedown', 'mousemove', 'keypress', 'touchstart', 'scroll']
+  activityEvents.forEach(event => {
+    window.addEventListener(event, resetIdleTimer, { passive: true })
+  })
+
+  idleTimer = setInterval(checkIdle, 1000)
+
   // Reduced polling to 10 seconds as fallback (events handle real-time updates)
   statusInterval = setInterval(updatePortStatuses, 5000)
 })
 
-onUnmounted(() => {
-  if (statusInterval) {
-    clearInterval(statusInterval)
+const resetIdleTimer = () => {
+  lastActivity.value = Date.now()
+  if (isIdle.value) {
+    isIdle.value = false
   }
+}
+
+const checkIdle = () => {
+  const now = Date.now()
+  const idleTime = now - lastActivity.value
+
+  // 1 MINUTE IDLE: Show screen saver IF on home screen
+  if (currentView.value === 'home' && idleTime >= 60000 && !isIdle.value) {
+    isIdle.value = true
+  }
+
+  // 20 SECONDS IDLE: "Are you still there?" on transaction views
+  const transactionViews = ['selectPort', 'storePoint', 'redeem']
+  if (transactionViews.includes(currentView.value) && idleTime >= 20000 && !isShowingIdlePrompt.value) {
+    showIdlePrompt()
+  }
+}
+
+const showIdlePrompt = async () => {
+  isShowingIdlePrompt.value = true
+  
+  const result = await Swal.fire({
+    title: 'Are you still there?',
+    text: 'Your session will reset soon due to inactivity.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, I\'m here',
+    cancelButtonText: 'Cancel Session',
+    timer: 10000,
+    timerProgressBar: true,
+    background: '#ffffff',
+    color: '#0f172a',
+    confirmButtonColor: '#11998e',
+    allowOutsideClick: false
+  })
+
+  isShowingIdlePrompt.value = false
+  
+  if (result.isConfirmed) {
+    resetIdleTimer()
+  } else {
+    // Dismissed, timed out, or "Cancel Session" clicked
+    resetToHome()
+  }
+}
+
+onUnmounted(() => {
+  if (statusInterval) clearInterval(statusInterval)
+  if (idleTimer) clearInterval(idleTimer)
+  
+  const activityEvents = ['mousedown', 'mousemove', 'keypress', 'touchstart', 'scroll']
+  activityEvents.forEach(event => {
+    window.removeEventListener(event, resetIdleTimer)
+  })
 })
 
 function goToUseNow() {
@@ -171,22 +240,35 @@ const goToStorePoint = async () => {
     });
     return;
   }
-  // 2. Ask for confirmation
-  const confirmResult = await Swal.fire({
-    title: 'Store Points?',
-    text: `Are you sure you want to store ${currentPoints.value} points for later? This will end your current session.`,
-    icon: 'question',
+  // 2. Ask how many points to store
+  const { value: pointsToStore } = await Swal.fire({
+    title: 'Store Points',
+    text: `How many points would you like to store? (Available: ${currentPoints.value})`,
+    input: 'number',
+    inputAttributes: {
+      min: 1,
+      max: currentPoints.value,
+      step: 1
+    },
+    inputValue: currentPoints.value,
     showCancelButton: true,
-    confirmButtonText: 'Yes, Store Them',
-    cancelButtonText: 'No, Keep Using',
+    confirmButtonText: 'Store Points',
     confirmButtonColor: '#11998e',
     background: '#ffffff',
-    color: '#0f172a'
+    color: '#0f172a',
+    inputValidator: (value) => {
+      if (!value || value <= 0) {
+        return 'Please enter a valid amount of points'
+      }
+      if (value > currentPoints.value) {
+        return `You only have ${currentPoints.value} points available`
+      }
+    }
   });
 
-  if (!confirmResult.isConfirmed) return;
+  if (!pointsToStore) return;
 
-  storedPoints.value = currentPoints.value
+  storedPoints.value = parseInt(pointsToStore)
   
   try {
     if (window.electronAPI) {
@@ -352,12 +434,30 @@ async function selectPort(portNumber) {
   }
 }
 
+async function simulateCharging(portNumber) {
+  selectedPort.value = portNumber
+  chargingDuration.value = 60 // 1 minute simulation
+  isSimulating.value = true
+  currentView.value = 'charging'
+  
+  Swal.fire({
+    title: 'Simulation Started',
+    text: `Viewing timer UI for Port ${portNumber} (1 minute)`,
+    icon: 'info',
+    timer: 2000,
+    showConfirmButton: false,
+    background: '#ffffff',
+    color: '#0f172a'
+  })
+}
+
 function resetToHome() {
   currentView.value = 'home'
   selectedPort.value = null
   storedQrData.value = ''
   storedPoints.value = 0
   chargingDuration.value = 0
+  isSimulating.value = false
   
   // Refresh points when returning home
   if (pointsDisplayRef.value && pointsDisplayRef.value.refreshPoints) {
@@ -509,7 +609,12 @@ function isPortDisabled(portNumber) {
         
         <!-- Select Port View -->
         <div v-else-if="currentView === 'selectPort'" class="view-container select-port-view" key="selectPort">
-          <h2 class="view-title">Select Charging Port</h2>
+          <div class="view-header-with-action">
+            <h2 class="view-title">Select Charging Port</h2>
+            <button class="simulate-test-btn glass-panel" @click="simulateCharging(1)">
+              <Activity :size="18" /> Simulate Test
+            </button>
+          </div>
           <div class="ports-grid">
             <button 
               v-for="port in [1, 2, 3]" 
@@ -566,6 +671,7 @@ function isPortDisabled(portNumber) {
           <ChargingProgress 
             :port="selectedPort" 
             :totalSeconds="chargingDuration"
+            :simulate="isSimulating"
             @complete="onChargingComplete"
             @cancel="resetToHome" 
           />
@@ -584,6 +690,11 @@ function isPortDisabled(portNumber) {
     <!-- Background Decor -->
     <div class="bg-gradient-orb orb-1"></div>
     <div class="bg-gradient-orb orb-2"></div>
+
+    <!-- Idle Overlay / Screen Saver -->
+    <Transition name="fade">
+      <IdleOverlay v-if="isIdle" @dismiss="resetIdleTimer" />
+    </Transition>
   </div>
 </template>
 
@@ -832,6 +943,35 @@ function isPortDisabled(portNumber) {
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   width: 100%;
+}
+
+.view-header-with-action {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.simulate-test-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(17, 153, 142, 0.3);
+  color: var(--primary);
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.simulate-test-btn:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(17, 153, 142, 0.2);
 }
 
 .port-card-wrapper {

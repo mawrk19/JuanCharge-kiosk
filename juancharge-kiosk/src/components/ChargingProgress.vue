@@ -11,6 +11,10 @@ const props = defineProps({
   totalSeconds: {
     type: Number,
     required: true
+  },
+  simulate: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -24,7 +28,7 @@ let statusInterval = null
 const formatTime = (seconds) => {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
+  const secs = Math.floor(seconds % 60)
   
   if (hours > 0) {
     return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
@@ -34,12 +38,26 @@ const formatTime = (seconds) => {
 
 // Calculate progress percentage
 const progressPercentage = computed(() => {
+  if (props.totalSeconds === 0) return 100
   const elapsed = props.totalSeconds - remainingSeconds.value
   return Math.min((elapsed / props.totalSeconds) * 100, 100)
 })
 
 // Poll charging status
 const updateStatus = async () => {
+  if (props.simulate) {
+    if (remainingSeconds.value > 0) {
+      remainingSeconds.value -= 1
+    } else {
+      isComplete.value = true
+      clearInterval(statusInterval)
+      setTimeout(() => {
+        emit('complete')
+      }, 5000)
+    }
+    return
+  }
+
   try {
     const result = await window.electronAPI.invoke('get-charging-status')
     
@@ -92,6 +110,12 @@ const handleCancelCharging = async () => {
   })
 
   if (result.isConfirmed) {
+    if (props.simulate) {
+      clearInterval(statusInterval)
+      emit('cancel')
+      return
+    }
+
     try {
       const deactivateResult = await window.electronAPI.invoke('deactivate-charging', {
         port: props.port
