@@ -40,11 +40,24 @@
   /* Animations */
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Font Scaling */
+  --font-h1: clamp(1.8rem, 5vw, 3rem);
+  --font-h2: clamp(1.4rem, 4vw, 2.5rem);
+  --font-h3: clamp(1.1rem, 3vw, 1.8rem);
+  --font-body: clamp(0.95rem, 2vw, 1.1rem);
+  --font-sm: clamp(0.8rem, 1.5vw, 0.95rem);
+
+  /* Spacing Scaling */
+  --space-xs: clamp(0.5rem, 1vw, 0.75rem);
+  --space-sm: clamp(0.75rem, 1.5vw, 1rem);
+  --space-md: clamp(1rem, 2vw, 1.5rem);
+  --space-lg: clamp(1.5rem, 3vw, 2rem);
+  --space-xl: clamp(2rem, 4vw, 3rem);
 }
 
-/* Compact Screen Overrides (800x480) */
-@media (max-width: 800px),
-(max-height: 480px) {
+/* Compact Screen Overrides (max-width: 640px) */
+@media (max-width: 640px) {
   :root {
     --radius-sm: 6px;
     --radius-md: 12px;
@@ -54,7 +67,32 @@
 
   html {
     font-size: 14px;
-    /* Scale down base font size */
+  }
+}
+
+/* Extra Small Screens (max-height: 500px) */
+@media (max-height: 500px) {
+  :root {
+    --space-xs: 0.4rem;
+    --space-sm: 0.6rem;
+    --space-md: 0.8rem;
+    --space-lg: 1rem;
+    --space-xl: 1.5rem;
+  }
+}
+
+/* Tablet Portrait (600px - 900px) */
+@media (min-width: 600px) and (max-width: 900px) {
+  :root {
+    --font-h1: clamp(2rem, 4vw, 2.5rem);
+    --font-h2: clamp(1.5rem, 3.5vw, 2rem);
+  }
+}
+
+/* Desktop & Large Screens (900px+) */
+@media (min-width: 900px) {
+  html {
+    font-size: 16px;
   }
 }
 
@@ -74,6 +112,7 @@ body {
   color: var(--text-main);
   overflow: hidden;
   line-height: 1.5;
+  font-size: var(--font-body);
 }
 
 #app {
@@ -100,4 +139,117 @@ body {
 
 button {
   font-family: 'Outfit', sans-serif;
+}
+
+/* ============================================
+   RESPONSIVE MEDIA QUERIES
+   ============================================ */
+
+/* Mobile First - Extra Small (< 360px) */
+@media (max-width: 359px) {
+  :root {
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --space-xs: 0.3rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.7rem;
+    --space-lg: 0.9rem;
+    --space-xl: 1.2rem;
+  }
+  
+  html {
+    font-size: 12px;
+  }
+}
+
+/* Small Mobile (360px - 480px) */
+@media (max-width: 480px) and (min-height: 500px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+/* Vertical/Portrait Orientation (any width) */
+@media (max-aspect-ratio: 1 / 1) {
+  body {
+    font-size: var(--font-body);
+  }
+}
+
+/* Horizontal/Landscape Orientation (any height) */
+@media (min-aspect-ratio: 1 / 1) and (max-height: 600px) {
+  :root {
+    --space-lg: clamp(0.8rem, 2vw, 1.2rem);
+    --space-xl: clamp(1rem, 2.5vw, 1.5rem);
+  }
+}
+
+/* Tablet (600px - 900px width) */
+@media (min-width: 600px) and (max-width: 900px) {
+  :root {
+    --font-body: clamp(1rem, 1.8vw, 1.15rem);
+    --space-md: clamp(1.2rem, 2.5vw, 1.8rem);
+  }
+}
+
+/* Large Tablet & Small Desktop (900px - 1200px) */
+@media (min-width: 900px) and (max-width: 1200px) {
+  :root {
+    --font-h1: clamp(2.2rem, 3.5vw, 2.8rem);
+  }
+}
+
+/* Desktop (1200px+) */
+@media (min-width: 1200px) {
+  :root {
+    --font-h1: clamp(2.5rem, 3vw, 3rem);
+    --font-h2: clamp(1.8rem, 2.5vw, 2.2rem);
+  }
+}
+
+/* Extra Large Screens (1920px+) */
+@media (min-width: 1920px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+/* Ultra-wide Screens (2560px+) */
+@media (min-width: 2560px) {
+  html {
+    font-size: 20px;
+  }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  .glass-panel {
+    min-height: 44px;
+    padding: clamp(0.5rem, 2vw, 1rem);
+    min-width: 44px;
+  }
+  
+  /* Increase touch targets */
+  input,
+  textarea {
+    min-height: 48px;
+    padding: clamp(0.5rem, 2vw, 0.75rem);
+    font-size: 16px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .glass-panel {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
 }

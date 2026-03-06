@@ -163,7 +163,7 @@ const handleCancelCharging = async () => {
     <div class="progress-card glass-panel">
       <!-- Circular Progress -->
       <div class="circular-wrapper">
-        <svg class="progress-ring" width="260" height="260">
+        <svg class="progress-ring" :viewBox="`0 0 260 260`">
           <circle
             stroke="rgba(0,0,0,0.05)"
             stroke-width="12"
@@ -222,25 +222,32 @@ const handleCancelCharging = async () => {
   width: 100%;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .progress-card {
-  padding: 50px;
+  padding: clamp(20px, 5vw, 50px);
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
   max-width: 500px;
+  border-radius: var(--radius-lg);
 }
 
 .circular-wrapper {
   position: relative;
-  width: 260px;
-  height: 260px;
-  margin-bottom: 30px;
+  width: clamp(180px, 50vw, 260px);
+  height: clamp(180px, 50vw, 260px);
+  margin-bottom: clamp(20px, 5vw, 30px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .progress-ring {
+  width: 100%;
+  height: 100%;
   transform: rotate(-90deg);
 }
 
@@ -259,54 +266,55 @@ const handleCancelCharging = async () => {
 }
 
 .timer {
-  font-size: 3.5rem;
+  font-size: clamp(2rem, 8vw, 3.5rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  margin-bottom: 5px;
+  margin-bottom: clamp(3px, 1vw, 5px);
   color: var(--text-main);
 }
 
 .check-icon {
-  font-size: 5rem;
+  font-size: clamp(3rem, 10vw, 5rem);
   color: var(--secondary);
   line-height: 1;
   animation: scaleIn 0.5s var(--ease-spring);
 }
 
 .port-tag {
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: clamp(1px, 0.2vw, 2px);
   color: var(--text-muted);
-  margin-top: 5px;
+  margin-top: clamp(3px, 0.5vw, 5px);
 }
 
 .status-box {
   text-align: center;
+  width: 100%;
 }
 
 .status-main {
-  font-size: 2rem;
+  font-size: clamp(1.4rem, 4vw, 2rem);
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: clamp(8px, 2vw, 10px);
   color: var(--text-main);
   background: none;
   -webkit-text-fill-color: var(--text-main);
 }
 
 .status-sub {
-  font-size: 1.1rem;
+  font-size: clamp(0.95rem, 2.5vw, 1.1rem);
   color: var(--secondary);
 }
 
 .cancel-btn {
-  margin-top: 30px;
-  padding: 12px 30px;
+  margin-top: clamp(20px, 4vw, 30px);
+  padding: clamp(10px, 2vw, 12px) clamp(20px, 4vw, 30px);
   background: rgba(220, 38, 38, 0.1);
   border: 2px solid #dc2626;
   color: #dc2626;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2vw, 1rem);
   font-weight: 700;
   border-radius: var(--radius-xl);
   cursor: pointer;
@@ -314,6 +322,9 @@ const handleCancelCharging = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  white-space: nowrap;
 }
 
 .cancel-btn:hover {
@@ -332,37 +343,116 @@ const handleCancelCharging = async () => {
   to { transform: scale(1); opacity: 1; }
 }
 
-@media (max-height: 480px) {
+/* Responsive Breakpoints */
+@media (max-width: 600px) {
   .progress-card {
-    padding: 20px;
-    flex-direction: row;
-    gap: 40px;
-    max-width: 600px;
+    padding: clamp(15px, 3vw, 25px);
   }
-  
+
   .circular-wrapper {
-    width: 180px;
-    height: 180px;
-    margin-bottom: 0;
+    width: clamp(160px, 40vw, 200px);
+    height: clamp(160px, 40vw, 200px);
   }
-  
-  .progress-ring {
-    width: 180px;
-    height: 180px;
+}
+
+@media (max-height: 600px) {
+  .progress-card {
+    padding: clamp(15px, 2vh, 25px);
   }
-  
-  /* Scale SVG internals via CSS transform if needed, or rely on viewBox scaling if responsive */
-  .progress-ring {
-    transform: rotate(-90deg) scale(0.7); 
-    transform-origin: center;
+
+  .circular-wrapper {
+    width: clamp(150px, 30vh, 180px);
+    height: clamp(150px, 30vh, 180px);
+    margin-bottom: clamp(15px, 2vh, 20px);
   }
-  
+
   .timer {
-    font-size: 2.5rem;
+    font-size: clamp(1.8rem, 5vh, 2.5rem);
   }
-  
+
   .status-main {
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 2.5vh, 1.5rem);
+  }
+
+  .cancel-btn {
+    margin-top: clamp(15px, 2vh, 20px);
+  }
+}
+
+@media (max-height: 500px) {
+  .progress-card {
+    padding: clamp(12px, 1.5vh, 18px);
+    flex-direction: row;
+    gap: clamp(20px, 4vw, 30px);
+  }
+
+  .circular-wrapper {
+    width: clamp(120px, 25vh, 160px);
+    height: clamp(120px, 25vh, 160px);
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .status-box {
+    flex: 1;
+  }
+
+  .status-main {
+    font-size: clamp(1rem, 2vh, 1.2rem);
+  }
+
+  .status-sub {
+    font-size: clamp(0.85rem, 1.5vh, 0.95rem);
+  }
+
+  .cancel-btn {
+    margin-top: clamp(12px, 1.5vh, 15px);
+    width: 100%;
+  }
+}
+
+@media (max-height: 400px) {
+  .circular-wrapper {
+    width: clamp(100px, 20vh, 140px);
+    height: clamp(100px, 20vh, 140px);
+  }
+
+  .timer {
+    font-size: clamp(1.5rem, 4vh, 2rem);
+  }
+
+  .port-tag {
+    display: none;
+  }
+}
+
+/* Landscape Orientation Optimization */
+@media (orientation: landscape) and (max-height: 600px) {
+  .progress-card {
+    flex-direction: row;
+    gap: clamp(20px, 3vw, 40px);
+    align-items: center;
+  }
+
+  .circular-wrapper {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .status-box {
+    flex: 1;
+  }
+
+  .cancel-btn {
+    width: 100%;
+  }
+}
+
+/* Touch Device Optimization */
+@media (hover: none) and (pointer: coarse) {
+  .cancel-btn {
+    min-height: 48px;
+    padding: 12px 24px;
   }
 }
 </style>

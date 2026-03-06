@@ -739,19 +739,19 @@ function isPortDisabled(portNumber) {
   100% { transform: translate(0, 0); }
 }
 
-/* Header */
+/* Header Responsive */
 .app-header {
-  height: 80px;
+  height: clamp(50px, 12vw, 100px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 40px;
-  margin: 20px 20px 0 20px;
+  padding: 0 clamp(15px, 5vw, 40px);
+  margin: clamp(8px, 2vw, 20px) clamp(10px, 3vw, 20px) 0 clamp(10px, 3vw, 20px);
   z-index: 10;
 }
 
 .app-title {
-  font-size: 2rem;
+  font-size: var(--font-h1);
   font-weight: 700;
   letter-spacing: -1px;
 }
@@ -759,32 +759,15 @@ function isPortDisabled(portNumber) {
 .active-status-badge {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: clamp(6px, 1vw, 10px);
   background: rgba(17, 153, 142, 0.1);
-  padding: 8px 16px;
+  padding: clamp(6px, 1.5vw, 8px) clamp(12px, 2vw, 16px);
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary);
   border: 1px solid var(--primary);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--secondary);
-  border-radius: 50%;
-  box-shadow: 0 0 10px var(--secondary);
-}
-
-.pulse {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 0.5; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1.1); }
-  100% { opacity: 0.5; transform: scale(0.9); }
+  white-space: nowrap;
 }
 
 /* Content Area */
@@ -793,40 +776,44 @@ function isPortDisabled(portNumber) {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+  padding: clamp(10px, 3vw, 20px);
   position: relative;
+  overflow-y: auto;
 }
 
 .view-container {
   width: 100%;
-  max-width: 1000px;
+  max-width: 1200px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;
+  gap: var(--space-lg);
+  padding: 0 clamp(0px, 2vw, 20px);
 }
 
 /* Home View */
 .home-view {
-  margin-top: 0; /* Remove negative adjustment to prevent overlap */
+  margin-top: 0;
 }
 
 .hero-section {
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: clamp(10px, 2vw, 20px);
 }
 
+/* Action Grid - Responsive */
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: clamp(16px, 3vw, 24px);
   width: 100%;
+  max-width: 100%;
 }
 
 .action-grid.three-cols {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .action-card {
@@ -834,15 +821,17 @@ function isPortDisabled(portNumber) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: clamp(20px, 4vw, 40px) clamp(12px, 3vw, 20px);
   border: 1px solid rgba(0, 0, 0, 0.05);
   color: var(--text-main);
   background: white;
   cursor: pointer;
   transition: all 0.3s var(--ease-spring);
   text-align: center;
-  height: 220px;
+  height: clamp(140px, 20vw, 220px);
   box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg);
+  min-height: 44px;
 }
 
 .action-card:hover {
@@ -873,76 +862,96 @@ function isPortDisabled(portNumber) {
 }
 
 .icon-wrapper {
-  font-size: 3.5rem;
-  margin-bottom: 20px;
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  margin-bottom: clamp(10px, 2vw, 20px);
   filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
 }
 
 .card-title {
   display: block;
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
   font-weight: 700;
-  margin-bottom: 5px;
+  margin-bottom: clamp(3px, 1vw, 5px);
 }
 
 .card-desc {
   display: block;
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
   color: var(--text-muted);
 }
 
 /* Status Summary */
 .status-summary {
   width: 100%;
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: clamp(12px, 3vw, 20px);
+  margin-bottom: var(--space-lg);
+  border-radius: var(--radius-lg);
 }
 
 .section-label {
-  font-size: 0.9rem;
+  font-size: var(--font-sm);
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-muted);
-  margin-bottom: 15px;
+  margin-bottom: clamp(10px, 2vw, 15px);
 }
 
 .mini-status-grid {
   display: flex;
-  gap: 15px;
+  gap: clamp(10px, 2vw, 15px);
+  flex-wrap: wrap;
 }
 
 .mini-status-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: clamp(8px, 1vw, 10px);
   background: var(--text-main);
-  padding: 8px 16px;
+  padding: clamp(6px, 1.5vw, 8px) clamp(12px, 2vw, 16px);
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--secondary);
+  min-height: 44px;
 }
 
 .port-id {
   font-weight: 600;
   color: white;
+  white-space: nowrap;
+  font-size: clamp(0.85rem, 2vw, 1rem);
 }
 
 .port-timer {
   font-family: monospace;
   color: var(--secondary);
+  font-size: clamp(0.85rem, 2vw, 1rem);
 }
 
 /* Select Port View */
 .view-title {
-  font-size: 2.5rem;
+  font-size: var(--font-h2);
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: clamp(12px, 2vw, 20px);
+  width: 100%;
+  text-align: center;
 }
 
 .ports-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: clamp(15px, 3vw, 20px);
   width: 100%;
+}
+
+@media (max-width: 600px) {
+  .ports-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 900px) {
+  .ports-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .view-header-with-action {
@@ -950,21 +959,25 @@ function isPortDisabled(portNumber) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: clamp(8px, 2vw, 15px);
+  flex-wrap: wrap;
+  gap: clamp(12px, 2vw, 20px);
 }
 
 .simulate-test-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: clamp(6px, 1vw, 8px);
+  padding: clamp(8px, 2vw, 10px) clamp(16px, 3vw, 20px);
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(17, 153, 142, 0.3);
   color: var(--primary);
   border-radius: var(--radius-lg);
   font-weight: 600;
+  font-size: clamp(0.85rem, 2vw, 1rem);
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .simulate-test-btn:hover {
@@ -974,20 +987,13 @@ function isPortDisabled(portNumber) {
   box-shadow: 0 5px 15px rgba(17, 153, 142, 0.2);
 }
 
-.port-card-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  width: 100%;
-}
-
 .port-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  height: 200px;
+  padding: clamp(15px, 3vw, 20px);
+  height: clamp(160px, 25vw, 200px);
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.3s ease;
@@ -996,40 +1002,8 @@ function isPortDisabled(portNumber) {
   overflow: hidden;
   background: white;
   width: 100%;
-}
-
-.port-qr-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 15px;
-  background: rgba(255, 255, 255, 0.8);
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-}
-
-.port-card-wrapper:hover .port-qr-section {
-  border-color: var(--secondary);
-  box-shadow: 0 4px 15px rgba(56, 239, 125, 0.2);
-}
-
-.port-qr-img {
-  width: 100px;
-  height: 100px;
-  object-fit: contain;
-  background: white;
-  padding: 5px;
-  border-radius: 4px;
-}
-
-.qr-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  min-height: 44px;
 }
 
 .port-card.available {
@@ -1058,14 +1032,14 @@ function isPortDisabled(portNumber) {
 
 .port-icon-wrapper {
   background: rgba(17, 153, 142, 0.1);
-  width: 80px;
-  height: 80px;
+  width: clamp(50px, 12vw, 80px);
+  height: clamp(50px, 12vw, 80px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
-  font-size: 2.5rem;
+  margin-bottom: clamp(10px, 2vw, 20px);
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
 }
 
 .port-info {
@@ -1074,20 +1048,20 @@ function isPortDisabled(portNumber) {
 
 .port-number {
   display: block;
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
   font-weight: 700;
-  margin-bottom: 5px;
+  margin-bottom: clamp(3px, 0.5vw, 5px);
 }
 
 .port-status {
   display: block;
-  font-size: 1.5rem;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
   font-weight: 600;
-  margin-bottom: 5px;
+  margin-bottom: clamp(3px, 0.5vw, 5px);
 }
 
 .port-subtext {
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
   color: var(--text-muted);
 }
 
@@ -1095,13 +1069,15 @@ function isPortDisabled(portNumber) {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.1rem;
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
   cursor: pointer;
-  padding: 10px 20px;
+  padding: clamp(8px, 2vw, 10px) clamp(15px, 3vw, 20px);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: clamp(8px, 1vw, 10px);
   transition: color 0.3s ease;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .back-btn:hover {
@@ -1136,87 +1112,208 @@ function isPortDisabled(portNumber) {
   display: none;
 }
 
-/* Compact Screen Optimizations (800x480) */
-@media (max-height: 480px) {
+/* ============================================
+   COMPREHENSIVE RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Extra Small (max 480px) */
+@media (max-width: 480px) {
   .app-header {
-    height: 50px;
-    padding: 0 20px;
-    margin: 10px 10px 0 10px;
+    padding: 0 clamp(10px, 3vw, 15px);
+    margin: 8px clamp(8px, 2vw, 10px) 0 clamp(8px, 2vw, 10px);
   }
-  
-  .app-title {
-    font-size: 1.5rem;
+
+  .view-header-with-action {
+    flex-direction: column;
+    align-items: stretch;
   }
-  
-  .active-status-badge {
-    padding: 4px 10px;
-    font-size: 0.8rem;
+
+  .simulate-test-btn {
+    width: 100%;
+    justify-content: center;
   }
-  
-  .app-content {
-    padding: 10px;
+
+  .action-grid {
+    grid-template-columns: 1fr;
   }
-  
-  .view-container {
-    gap: 15px;
+
+  .action-grid.three-cols {
+    grid-template-columns: 1fr;
   }
-  
-  /* Home View Compact */
-  .home-view {
-    margin-top: 0;
-  }
-  
-  .action-card {
-    height: 140px;
-    padding: 20px 10px;
-  }
-  
+
   .icon-wrapper {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
+    font-size: clamp(1.8rem, 6vw, 2.5rem);
   }
-  
+}
+
+/* Small (481px - 640px) */
+@media (min-width: 481px) and (max-width: 640px) {
+  .action-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .action-grid.three-cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tablet (641px - 900px) */
+@media (min-width: 641px) and (max-width: 900px) {
+  .view-container {
+    gap: clamp(20px, 3vw, 30px);
+  }
+
+  .ports-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Large Tablet & Desktop (901px+) */
+@media (min-width: 901px) {
+  .app-content {
+    padding: clamp(20px, 4vw, 40px);
+  }
+
+  .view-container {
+    gap: var(--space-xl);
+  }
+
+  .action-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .action-grid.three-cols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Very Tall Screens (height > 900px) */
+@media (min-height: 900px) {
+  .app-content {
+    justify-content: flex-start;
+    padding-top: clamp(20px, 5vh, 40px);
+  }
+}
+
+/* Very Short Screens (height < 500px) */
+@media (max-height: 500px) {
+  .app-content {
+    overflow-y: auto;
+  }
+
+  .view-container {
+    gap: clamp(10px, 2vh, 15px);
+  }
+
+  .action-card {
+    height: clamp(100px, 15vh, 140px);
+    padding: clamp(12px, 2vh, 15px) clamp(10px, 2vw, 15px);
+  }
+
+  .icon-wrapper {
+    font-size: clamp(1.5rem, 4vh, 2rem);
+    margin-bottom: clamp(5px, 1vh, 8px);
+  }
+
   .card-title {
-    font-size: 1.1rem;
+    font-size: clamp(0.95rem, 2vh, 1.1rem);
   }
-  
+
   .card-desc {
-    font-size: 0.8rem;
+    font-size: clamp(0.75rem, 1.5vh, 0.8rem);
   }
-  
-  /* Select Port View Compact */
+
   .view-title {
-    font-size: 1.8rem;
-    margin-bottom: 15px;
+    font-size: clamp(1.4rem, 3vh, 1.8rem);
+    margin-bottom: clamp(8px, 1.5vh, 12px);
   }
-  
+
   .port-card {
-    padding: 15px;
-    height: 180px;
+    height: clamp(140px, 18vh, 180px);
+    padding: clamp(10px, 2vh, 12px);
   }
-  
-  .port-icon-wrapper {
-    width: 60px;
-    height: 60px;
-    font-size: 2rem;
-    margin-bottom: 10px;
-  }
-  
-  .port-number {
-    font-size: 1.1rem;
-  }
-  
-  .port-status {
-    font-size: 1.2rem;
-  }
-  
-  .port-subtext {
-    font-size: 0.8rem;
-  }
-  
+
   .back-btn {
-    padding: 5px 15px;
-    font-size: 1rem;
+    font-size: clamp(0.9rem, 1.8vh, 1rem);
+    padding: clamp(6px, 1vh, 8px) clamp(10px, 2vw, 15px);
+  }
+}
+
+/* Extra Short Screens (height < 400px) */
+@media (max-height: 400px) {
+  .app-header {
+    height: clamp(40px, 10vh, 50px);
+    margin: clamp(4px, 1vh, 8px) clamp(8px, 2vw, 10px) 0;
+  }
+
+  .view-container {
+    gap: clamp(8px, 1.5vh, 12px);
+  }
+
+  .action-card {
+    height: clamp(80px, 12vh, 120px);
+  }
+
+  .icon-wrapper {
+    margin-bottom: clamp(3px, 0.5vh, 5px);
+  }
+}
+
+/* Landscape Orientation (width > 1.5x height) */
+@media (orientation: landscape) and (max-height: 700px) {
+  .app-header {
+    height: clamp(40px, 10vh, 60px);
+    margin: clamp(4px, 1vh, 8px) clamp(10px, 2vw, 15px) 0;
+  }
+
+  .app-content {
+    padding: clamp(8px, 1.5vh, 12px);
+  }
+
+  .view-container {
+    gap: clamp(12px, 2vh, 16px);
+  }
+
+  .action-card {
+    height: clamp(100px, 14vh, 140px);
+  }
+
+  .ports-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* Very Wide Screens (1920px+) */
+@media (min-width: 1920px) {
+  .app-content {
+    padding: 30px;
+  }
+
+  .view-container {
+    max-width: 1400px;
+  }
+
+  .action-grid {
+    gap: 30px;
+  }
+
+  .ports-grid {
+    gap: 30px;
+  }
+}
+
+/* Ultra Wide Screens (2560px+) */
+@media (min-width: 2560px) {
+  .view-container {
+    max-width: 1600px;
+  }
+
+  .app-title {
+    font-size: 3.5rem;
+  }
+
+  .view-title {
+    font-size: 3rem;
   }
 }
 </style>
