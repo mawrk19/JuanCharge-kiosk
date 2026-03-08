@@ -9,8 +9,8 @@
     "electron": "electron .",
     "build": "vite build",
     "fake-points": "node generate_fake_points.js",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "postinstall": "electron-rebuild -f -w better-sqlite3"
+    "rebuild": "electron-rebuild -f -o better-sqlite3",
+    "postinstall": "electron-rebuild -f -o better-sqlite3"
   },
   "dependencies": {
     "@vueuse/core": "^14.0.0",
@@ -18,7 +18,6 @@
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.2.3",
     "jose": "^6.1.3",
-    "lgpio": "^1.0.6",
     "lucide-vue-next": "^0.563.0",
     "qrcode": "^1.5.4",
     "qrcode.vue": "^3.7.0",
@@ -33,6 +32,7 @@
     "vite": "^7.1.7"
   },
   "optionalDependencies": {
+    "lgpio": "^1.0.6",
     "onoff": "^6.0.3"
   }
 }

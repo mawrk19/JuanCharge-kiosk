@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
+import axios from 'axios';
 import * as relayController from './relay_controller.js';
 import * as jose from 'jose';
 import 'dotenv/config'; // Load env vars
@@ -275,6 +276,9 @@ ipcMain.handle('generate-signed-voucher', async (event, { amount }) => {
     // 3. Start new transaction (Zero points)
     createTransaction('store_points');
 
+    // Trigger sync in background
+    syncTransactionLogs().catch(err => console.error('Background sync failed:', err));
+
     return { success: true, token: jwt };
   } catch (error) {
     console.error('Error generating signed voucher:', error);
@@ -331,6 +335,9 @@ ipcMain.handle('reset-points', async (event, action = 'store', port = null) => {
     // Start new transaction
     createTransaction(action, port);
 
+    // Trigger sync in background
+    syncTransactionLogs().catch(err => console.error('Background sync failed:', err));
+
     return {
       success: true,
       points: 0,
@@ -342,6 +349,107 @@ ipcMain.handle('reset-points', async (event, action = 'store', port = null) => {
     return { success: false, error: error.message };
   }
 });
+
+// Helper function to sync transactions
+async function syncTransactionLogs() {
+  console.log('Main: Starting transaction sync...');
+  try {
+    const unsynced = db.prepare('SELECT * FROM transactions WHERE synced = 0 AND end_time IS NOT NULL').all(); // Sync only finished sessions
+    
+    if (unsynced.length === 0) {
+      console.log('No unsynced transactions found.');
+      return { success: true, count: 0, message: 'No unsynced transactions' };
+    }
+
+    // Get all items associated with these transactions to send detailed logs
+    const logs = [];
+    for (const txn of unsynced) {
+      const items = db.prepare('SELECT * FROM transaction_items WHERE transaction_id = ?').all(txn.id);
+      
+      if (items.length > 0) {
+        items.forEach(item => {
+          // generate unique log id (use timestamp+random for simplicity)
+          const logId = `${item.id}-${Date.now()}`;
+          // ensure ISO timestamp
+          const isoTime = new Date(item.date || txn.start_time).toISOString();
+          logs.push({
+            log_id: logId,
+            transaction_id: txn.id,
+            item_type: item.item_type || 'mixed',
+            points: item.points || 0,
+            scanned_at: isoTime
+          });
+        });
+      } else {
+        const logId = `txn-${txn.id}-${Date.now()}`;
+        const isoTime = new Date(txn.start_time).toISOString();
+        logs.push({
+          log_id: logId,
+          transaction_id: txn.id,
+          item_type: 'mixed',
+          points: txn.total_points || 0,
+          scanned_at: isoTime
+        });
+      }
+    }
+
+    const payload = {
+      kiosk_code: KIOSK_CODE,
+      logs: logs
+    };
+
+    const payloadString = JSON.stringify(payload);
+    const signature = generateSignature(payloadString);
+
+    const url = `${API_BASE_URL}/kiosk/recycling-logs/sync`;
+    console.log(`Sending sync request to ${url} with ${logs.length} data rows.`);
+    console.log('DEBUG Payload:', payloadString);
+
+    const response = await axios({
+      method: 'post',
+      url: url,
+      data: payload,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Kiosk-Signature': signature,
+        'Accept': 'application/json'
+      }
+    });
+
+    // Log the actual response for debugging
+    console.log('--- SYNC ATTEMPT LOGS ---');
+    console.log('Payload sent:', JSON.stringify(payload, null, 2));
+    console.log('Signature:', signature);
+    console.log('Response Status:', response.status);
+    console.log('Response Data:', JSON.stringify(response.data, null, 2));
+
+    if (response.status === 200 || response.status === 201) {
+       console.log('Sync successful:', response.data);
+       const updateStmt = db.prepare('UPDATE transactions SET synced = 1 WHERE id = ?');
+       const transaction = db.transaction((ids) => {
+         for (const id of ids) updateStmt.run(id);
+       });
+       transaction(unsynced.map(t => t.id));
+       console.log(`Marked ${unsynced.length} transactions as synced.`);
+       return { success: true, count: unsynced.length };
+    } else {
+       console.warn('Sync failed with status:', response.status, response.data);
+       return { success: false, error: 'Sync failed', details: response.data };
+    }
+
+  } catch (error) {
+    console.error('Sync error:', error.message);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      return { success: false, error: error.message, details: error.response.data };
+    }
+    return { success: false, error: error.message };
+  }
+}
+
+// IPC handler to sync transactions
+ipcMain.handle('sync-transactions', syncTransactionLogs);
+
 
 // IPC handler to activate charging
 ipcMain.handle('activate-charging', async (event, { port, points }) => {
@@ -682,11 +790,14 @@ function initializeFileWatcher() {
 
 // Sync Job (Run periodically)
 setInterval(async () => {
-  // Check if we have unsynced vouchers
+  // 1. Sync Pending Transactions (Recycling Logs)
+  await syncTransactionLogs().catch(err => console.error('[AUTO-SYNC] Transaction sync failed:', err.message));
+
+  // 2. Sync Pending Vouchers (Old logic, kept for compatibility if needed)
   const vouchers = db.prepare("SELECT * FROM vouchers WHERE status = 'generated' LIMIT 50").all();
 
   if (vouchers.length > 0) {
-    console.log(`Syncing ${vouchers.length} vouchers...`);
+    console.log(`[AUTO-SYNC] Syncing ${vouchers.length} vouchers...`);
     try {
       const txnsPayload = vouchers.map(v => {
         // Payload is now a JWT string. We need to decode it to get the payload data.
@@ -747,14 +858,22 @@ setInterval(async () => {
     const payload = {
       kiosk_code: KIOSK_CODE,
       status: 'online',
-      timestamp: Date.now(),
+      timestamp: Date.now(), // Backend expects a number
       ports: portsPayload
     };
 
+    // Sign the heartbeat request just like sync
+    const payloadString = JSON.stringify(payload);
+    const signature = crypto.createHmac('sha256', KIOSK_SECRET_KEY).update(payloadString).digest('hex');
+
     const response = await fetch(`${API_BASE_URL}/kiosk/heartbeat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Kiosk-Signature': signature
+      },
+      body: payloadString
     });
 
     if (response.ok) {
@@ -834,7 +953,8 @@ setInterval(async () => {
         }
       }
     } else {
-      console.error(`[HEARTBEAT] Failed: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`[HEARTBEAT] Failed: ${response.status} ${response.statusText}`, errorText);
     }
   } catch (error) {
     console.error('[HEARTBEAT] Error:', error.message);
