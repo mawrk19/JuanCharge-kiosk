@@ -248,7 +248,10 @@ const goToStorePoint = async () => {
     inputAttributes: {
       min: 1,
       max: currentPoints.value,
-      step: 1
+      step: 1,
+      inputMode: 'numeric',
+      pattern: '[0-9]*',
+      autoFocus: 'autofocus'
     },
     inputValue: currentPoints.value,
     showCancelButton: true,
@@ -256,6 +259,15 @@ const goToStorePoint = async () => {
     confirmButtonColor: '#11998e',
     background: '#ffffff',
     color: '#0f172a',
+    didOpen: (modal) => {
+      setTimeout(() => {
+        const input = modal.querySelector('input')
+        if (input) {
+          input.focus()
+          input.click()
+        }
+      }, 100)
+    },
     inputValidator: (value) => {
       if (!value || value <= 0) {
         return 'Please enter a valid amount of points'
@@ -342,7 +354,10 @@ async function selectPort(portNumber) {
     inputAttributes: {
       min: 1,
       max: currentPoints.value,
-      step: 1
+      step: 1,
+      inputMode: 'numeric',
+      pattern: '[0-9]*',
+      autoFocus: 'autofocus'
     },
     inputValue: currentPoints.value,
     showCancelButton: true,
@@ -350,6 +365,15 @@ async function selectPort(portNumber) {
     confirmButtonColor: '#11998e',
     background: '#ffffff',
     color: '#0f172a',
+    didOpen: (modal) => {
+      setTimeout(() => {
+        const input = modal.querySelector('input')
+        if (input) {
+          input.focus()
+          input.click()
+        }
+      }, 100)
+    },
     inputValidator: (value) => {
       if (!value || value <= 0) {
         return 'Please enter a valid amount of points'
