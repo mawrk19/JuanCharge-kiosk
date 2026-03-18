@@ -227,6 +227,169 @@ function handleLogoClick() {
   }
 }
 
+const ensurePointNumpadStyles = () => {
+  if (document.getElementById('jc-point-numpad-style')) return
+
+  const style = document.createElement('style')
+  style.id = 'jc-point-numpad-style'
+  style.textContent = `
+    .jc-point-popup { width: min(94vw, 760px) !important; }
+    .jc-point-layout {
+      display: grid;
+      grid-template-columns: 1fr 230px;
+      gap: 14px;
+      align-items: start;
+      margin-top: 4px;
+    }
+    .jc-point-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .jc-point-label {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #334155;
+      text-align: left;
+    }
+    .jc-point-input {
+      margin: 0 !important;
+      width: 100% !important;
+      text-align: right;
+      font-size: 1.8rem !important;
+      font-weight: 700;
+      padding: 10px 14px !important;
+      border-radius: 12px !important;
+    }
+    .jc-point-hint {
+      font-size: 0.82rem;
+      color: #64748b;
+      text-align: left;
+    }
+    .jc-numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .jc-key {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 1rem;
+      min-height: 44px;
+      cursor: pointer;
+    }
+    .jc-key:active {
+      transform: scale(0.97);
+      background: #e2e8f0;
+    }
+    .jc-key.jc-key-clear { color: #dc2626; border-color: #fecaca; background: #fff1f2; }
+    .jc-key.jc-key-back { color: #11998e; border-color: #99f6e4; background: #f0fdfa; }
+    @media (max-width: 800px), (max-height: 480px) {
+      .jc-point-popup { width: min(98vw, 700px) !important; }
+      .jc-point-layout { grid-template-columns: 1fr 190px; gap: 10px; }
+      .jc-point-input { font-size: 1.4rem !important; }
+      .jc-key { min-height: 36px; font-size: 0.9rem; }
+    }
+  `
+  document.head.appendChild(style)
+}
+
+const showPointNumpadModal = async ({ title, availablePoints, confirmButtonText }) => {
+  ensurePointNumpadStyles()
+
+  const result = await Swal.fire({
+    title,
+    html: `
+      <div class="jc-point-layout">
+        <div class="jc-point-panel">
+          <label class="jc-point-label">Points</label>
+          <input id="jc-point-input" class="swal2-input jc-point-input" value="${availablePoints}" readonly inputmode="none" />
+          <div class="jc-point-hint">Available: ${availablePoints}</div>
+        </div>
+        <div class="jc-numpad">
+          <button type="button" class="jc-key" data-key="1">1</button>
+          <button type="button" class="jc-key" data-key="2">2</button>
+          <button type="button" class="jc-key" data-key="3">3</button>
+          <button type="button" class="jc-key" data-key="4">4</button>
+          <button type="button" class="jc-key" data-key="5">5</button>
+          <button type="button" class="jc-key" data-key="6">6</button>
+          <button type="button" class="jc-key" data-key="7">7</button>
+          <button type="button" class="jc-key" data-key="8">8</button>
+          <button type="button" class="jc-key" data-key="9">9</button>
+          <button type="button" class="jc-key jc-key-clear" data-key="clear">C</button>
+          <button type="button" class="jc-key" data-key="0">0</button>
+          <button type="button" class="jc-key jc-key-back" data-key="back">⌫</button>
+        </div>
+      </div>
+    `,
+    customClass: {
+      popup: 'jc-point-popup'
+    },
+    showCancelButton: true,
+    confirmButtonText,
+    confirmButtonColor: '#11998e',
+    background: '#ffffff',
+    color: '#0f172a',
+    didOpen: (modal) => {
+      const input = modal.querySelector('#jc-point-input')
+      const keys = modal.querySelectorAll('.jc-key')
+
+      const writeValue = (next) => {
+        const parsed = parseInt(next || '0', 10)
+        if (parsed > availablePoints) {
+          input.value = String(availablePoints)
+          return
+        }
+        input.value = next
+      }
+
+      keys.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-key')
+          const current = input.value || ''
+
+          if (key === 'clear') {
+            input.value = ''
+            return
+          }
+
+          if (key === 'back') {
+            input.value = current.slice(0, -1)
+            return
+          }
+
+          if (current.length >= 4) return
+
+          const next = current === '0' ? key : `${current}${key}`
+          writeValue(next)
+        })
+      })
+    },
+    preConfirm: () => {
+      const rawValue = document.getElementById('jc-point-input')?.value?.trim() || ''
+      const points = parseInt(rawValue, 10)
+
+      if (!rawValue || Number.isNaN(points) || points <= 0) {
+        Swal.showValidationMessage('Please enter a valid amount of points')
+        return false
+      }
+
+      if (points > availablePoints) {
+        Swal.showValidationMessage(`You only have ${availablePoints} points available`)
+        return false
+      }
+
+      return points
+    }
+  })
+
+  if (!result.isConfirmed) return null
+  return result.value
+}
+
 const goToStorePoint = async () => {
   await updateCurrentPoints() // Ensure we have latest points
   
@@ -241,44 +404,13 @@ const goToStorePoint = async () => {
     return;
   }
   // 2. Ask how many points to store
-  const { value: pointsToStore } = await Swal.fire({
+  const pointsToStore = await showPointNumpadModal({
     title: 'Store Points',
-    text: `How many points would you like to store? (Available: ${currentPoints.value})`,
-    input: 'number',
-    inputAttributes: {
-      min: 1,
-      max: currentPoints.value,
-      step: 1,
-      inputMode: 'numeric',
-      pattern: '[0-9]*',
-      autoFocus: 'autofocus'
-    },
-    inputValue: currentPoints.value,
-    showCancelButton: true,
-    confirmButtonText: 'Store Points',
-    confirmButtonColor: '#11998e',
-    background: '#ffffff',
-    color: '#0f172a',
-    didOpen: (modal) => {
-      setTimeout(() => {
-        const input = modal.querySelector('input')
-        if (input) {
-          input.focus()
-          input.click()
-        }
-      }, 100)
-    },
-    inputValidator: (value) => {
-      if (!value || value <= 0) {
-        return 'Please enter a valid amount of points'
-      }
-      if (value > currentPoints.value) {
-        return `You only have ${currentPoints.value} points available`
-      }
-    }
-  });
+    availablePoints: currentPoints.value,
+    confirmButtonText: 'Store Points'
+  })
 
-  if (!pointsToStore) return;
+  if (!pointsToStore) return
 
   storedPoints.value = parseInt(pointsToStore)
   
@@ -347,44 +479,13 @@ async function selectPort(portNumber) {
   }
 
   // Ask how many points to use
-  const { value: pointsToUse } = await Swal.fire({
+  const pointsToUse = await showPointNumpadModal({
     title: `Charge on Port ${portNumber}`,
-    text: `How many points would you like to use? (Available: ${currentPoints.value})`,
-    input: 'number',
-    inputAttributes: {
-      min: 1,
-      max: currentPoints.value,
-      step: 1,
-      inputMode: 'numeric',
-      pattern: '[0-9]*',
-      autoFocus: 'autofocus'
-    },
-    inputValue: currentPoints.value,
-    showCancelButton: true,
-    confirmButtonText: 'Start Charging',
-    confirmButtonColor: '#11998e',
-    background: '#ffffff',
-    color: '#0f172a',
-    didOpen: (modal) => {
-      setTimeout(() => {
-        const input = modal.querySelector('input')
-        if (input) {
-          input.focus()
-          input.click()
-        }
-      }, 100)
-    },
-    inputValidator: (value) => {
-      if (!value || value <= 0) {
-        return 'Please enter a valid amount of points'
-      }
-      if (value > currentPoints.value) {
-        return `You only have ${currentPoints.value} points available`
-      }
-    }
+    availablePoints: currentPoints.value,
+    confirmButtonText: 'Start Charging'
   })
 
-  if (!pointsToUse) return;
+  if (!pointsToUse) return
 
   const pointsNum = parseInt(pointsToUse)
   
@@ -563,17 +664,6 @@ function isPortDisabled(portNumber) {
 
 <template>
   <div class="app-layout">
-    <!-- Header -->
-    <header class="app-header glass-panel">
-      <div class="logo-area" @click="handleLogoClick" style="cursor: pointer">
-        <h1 class="app-title"><span class="text-gradient">Juan</span>Charge</h1>
-      </div>
-      <div v-if="portStatuses.some(p => p && p.active)" class="active-status-badge">
-        <Activity :size="16" class="status-icon pulse" />
-        {{ portStatuses.filter(p => p && p.active).length }} Active Sessions
-      </div>
-    </header>
-
     <!-- Main Content -->
     <main class="app-content">
       <Transition name="fade" mode="out-in">
@@ -719,6 +809,7 @@ function isPortDisabled(portNumber) {
     <Transition name="fade">
       <IdleOverlay v-if="isIdle" @dismiss="resetIdleTimer" />
     </Transition>
+
   </div>
 </template>
 
@@ -765,44 +856,6 @@ function isPortDisabled(portNumber) {
   100% { transform: translate(0, 0); }
 }
 
-/* Header */
-.app-header {
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 40px;
-  margin: 20px 20px 0 20px;
-  z-index: 10;
-}
-
-.app-title {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -1px;
-}
-
-.active-status-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(17, 153, 142, 0.1);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--primary);
-  border: 1px solid var(--primary);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--secondary);
-  border-radius: 50%;
-  box-shadow: 0 0 10px var(--secondary);
-}
-
 .pulse {
   animation: pulse 2s infinite;
 }
@@ -819,7 +872,7 @@ function isPortDisabled(portNumber) {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: clamp(10px, 2.5vh, 20px);
+  padding: clamp(14px, 3.2vh, 26px) clamp(10px, 2.5vw, 20px);
   position: relative;
   min-height: 0;
   overflow: hidden;
@@ -1177,42 +1230,8 @@ function isPortDisabled(portNumber) {
   display: none;
 }
 
-@media (max-width: 960px) {
-  .app-header {
-    padding: 0 24px;
-    margin: 12px 12px 0 12px;
-    height: 68px;
-  }
-
-  .app-title {
-    font-size: 1.7rem;
-  }
-
-  .active-status-badge {
-    font-size: 0.8rem;
-    padding: 6px 12px;
-  }
-}
-
 /* Compact Screen Optimizations (800x480) */
 @media (max-width: 800px), (max-height: 480px) {
-  .app-header {
-    height: 52px;
-    min-height: 52px;
-    padding: 0 12px;
-    margin: 10px 10px 0 10px;
-  }
-  
-  .app-title {
-    font-size: 1.5rem;
-  }
-  
-  .active-status-badge {
-    padding: 4px 10px;
-    font-size: 0.72rem;
-    gap: 6px;
-  }
-  
   .app-content {
     padding: 8px;
     align-items: flex-start;
