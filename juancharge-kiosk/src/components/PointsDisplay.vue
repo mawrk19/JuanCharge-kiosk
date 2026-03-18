@@ -154,12 +154,12 @@ onMounted(() => {
 .points-display-card {
   width: 100%;
   max-width: 600px; /* Wider card */
-  padding: 30px;
+  padding: clamp(12px, 3vh, 30px);
   background: white;
   border: 1px solid rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: clamp(8px, 2vh, 20px);
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-lg);
@@ -192,7 +192,7 @@ onMounted(() => {
 }
 
 .label {
-  font-size: 0.9rem;
+  font-size: clamp(0.7rem, 1.8vh, 0.9rem);
   text-transform: uppercase;
   letter-spacing: 2px;
   color: var(--text-muted);
@@ -221,11 +221,11 @@ onMounted(() => {
 
 .points-content {
   text-align: center;
-  padding: 10px 0;
+  padding: 2px 0;
 }
 
 .points-value {
-  font-size: 5rem;
+  font-size: clamp(2.4rem, 12vh, 5rem);
   font-weight: 800;
   line-height: 1;
   background: linear-gradient(to bottom, var(--primary), var(--secondary));
@@ -235,62 +235,64 @@ onMounted(() => {
 }
 
 .unit {
-  font-size: 1.5rem;
+  font-size: clamp(0.95rem, 3.4vh, 1.5rem);
   font-weight: 500;
   color: var(--text-muted);
   -webkit-text-fill-color: var(--text-muted); /* Override gradient */
 }
 
 .time-estimate {
-  margin-top: 15px;
-  font-size: 1.1rem;
+  margin-top: clamp(6px, 1.6vh, 15px);
+  font-size: clamp(0.78rem, 2.2vh, 1.1rem);
   color: var(--secondary);
   font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
   background: rgba(56, 239, 125, 0.1);
-  padding: 8px 16px;
+  padding: clamp(4px, 1.2vh, 8px) clamp(10px, 2vw, 16px);
   border-radius: 20px;
   display: inline-flex;
 }
 
 .card-footer {
   border-top: 1px solid rgba(0,0,0,0.05);
-  padding-top: 15px;
+  padding-top: clamp(6px, 1.5vh, 15px);
   text-align: right;
 }
 
 .footer-info {
-  font-size: 0.8rem;
+  font-size: clamp(0.65rem, 1.5vh, 0.8rem);
   color: var(--text-dim);
   font-family: monospace;
 }
 
-@media (max-height: 480px) {
+@media (max-width: 800px), (max-height: 480px) {
   .points-display-card {
-    padding: 15px;
-    gap: 10px;
+    padding: 12px;
+    gap: 8px;
     max-width: 500px;
   }
   
   .points-value {
-    font-size: 3.5rem;
+    font-size: clamp(2rem, 10vh, 3.4rem);
   }
   
   .unit {
-    font-size: 1.2rem;
+    font-size: 1rem;
   }
   
   .time-estimate {
-    font-size: 1rem;
-    margin-top: 5px;
-    padding: 5px 12px;
+    font-size: 0.78rem;
+    margin-top: 3px;
+    padding: 4px 10px;
   }
   
   .label {
-    font-size: 0.8rem;
+    font-size: 0.68rem;
+    letter-spacing: 1px;
   }
 }
 </style>

@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import QrcodeVue from 'qrcode.vue'
-import { QrCode, ScanLine, Smartphone, ArrowLeft, CheckCircle } from 'lucide-vue-next'
+import { QrCode, Smartphone, CheckCircle } from 'lucide-vue-next'
 import Swal from 'sweetalert2'
 
 const emit = defineEmits(['complete', 'hideDevMode'])
@@ -14,11 +14,11 @@ const kioskData = ref({
 })
 
 const qrCodeValue = computed(() => JSON.stringify(kioskData.value))
+const qrSize = ref(220)
 
 // Hidden test mode for manual redemption (triple-tap QR code to activate)
 const testMode = ref(false)
 const tapCount = ref(0)
-const userId = ref('') // Used for scanned data
 const userIdInput = ref('') // Used for manual test input
 const points = ref('')
 const isRedeeming = ref(false)
@@ -117,6 +117,20 @@ const goBack = () => {
 const hideDevMode = () => {
   emit('hideDevMode')
 }
+
+const updateQrSize = () => {
+  const minSide = Math.min(window.innerWidth, window.innerHeight)
+  qrSize.value = Math.max(140, Math.min(220, Math.floor(minSide * 0.46)))
+}
+
+onMounted(() => {
+  updateQrSize()
+  window.addEventListener('resize', updateQrSize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateQrSize)
+})
 </script>
 
 <template>
@@ -129,7 +143,7 @@ const hideDevMode = () => {
         <div class="qr-wrapper" @click="handleQrTap">
           <QrcodeVue 
             :value="qrCodeValue" 
-            :size="220" 
+            :size="qrSize" 
             level="H"
             render-as="svg"
             class="qr-code"
@@ -201,16 +215,17 @@ const hideDevMode = () => {
   flex-direction: column;
   align-items: center;
   width: 100%;
+  gap: clamp(10px, 2.5vh, 20px);
 }
 
 .view-title {
-  font-size: 2.5rem;
+  font-size: clamp(1.4rem, 5vh, 2.5rem);
   font-weight: 700;
-  margin-bottom: 25px;
+  margin-bottom: 0;
 }
 
 .content-card {
-  padding: 40px;
+  padding: clamp(14px, 4vh, 40px);
   width: 100%;
   max-width: 500px;
   display: flex;
@@ -223,13 +238,13 @@ const hideDevMode = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;
+  gap: clamp(12px, 2.8vh, 30px);
   width: 100%;
 }
 
 .qr-wrapper {
   background: white;
-  padding: 15px;
+  padding: clamp(8px, 1.8vh, 15px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
@@ -237,7 +252,7 @@ const hideDevMode = () => {
 .instructions {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: clamp(8px, 1.8vh, 15px);
   width: 100%;
 }
 
@@ -245,7 +260,7 @@ const hideDevMode = () => {
   display: flex;
   align-items: center;
   gap: 15px;
-  font-size: 1.1rem;
+  font-size: clamp(0.85rem, 2.2vh, 1.1rem);
   font-weight: 500;
   margin: 0;
 }
@@ -282,7 +297,7 @@ const hideDevMode = () => {
 
 .form-group {
   text-align: left;
-  margin-bottom: 20px;
+  margin-bottom: clamp(10px, 2vh, 20px);
 }
 
 .form-group label {
@@ -294,12 +309,12 @@ const hideDevMode = () => {
 
 .form-input {
   width: 100%;
-  padding: 12px;
+  padding: clamp(8px, 1.8vh, 12px);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 0, 0, 0.1);
   background: white;
   color: var(--text-main);
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 2vh, 1.1rem);
   outline: none;
 }
 
@@ -315,7 +330,7 @@ const hideDevMode = () => {
 
 .btn {
   flex: 1;
-  padding: 12px;
+  padding: clamp(8px, 1.8vh, 12px);
   border-radius: var(--radius-sm);
   border: none;
   font-weight: 600;
@@ -369,7 +384,9 @@ const hideDevMode = () => {
 .footer-actions {
   display: flex;
   gap: 30px;
-  margin-top: 20px;
+  margin-top: 0;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .hide-btn {
@@ -386,39 +403,37 @@ const hideDevMode = () => {
   text-decoration: underline;
 }
 
-@media (max-height: 480px) {
+@media (max-width: 800px), (max-height: 480px) {
   .view-title {
-    font-size: 1.8rem;
-    margin-bottom: 15px;
+    font-size: 1.3rem;
   }
   
   .content-card {
-    padding: 15px;
+    padding: 12px;
     flex-direction: row;
-    gap: 20px;
+    gap: 12px;
     max-width: 650px;
-    align-items: flex-start;
+    align-items: center;
   }
   
   .qr-section {
     flex-direction: row;
-    align-items: flex-start;
-    gap: 20px;
+    align-items: center;
+    gap: 12px;
   }
   
   .qr-wrapper {
-    padding: 10px;
+    padding: 8px;
   }
   
-  /* Override QR size in template via props/CSS if possible, or scale transform */
   .qr-code {
-    width: 160px !important;
-    height: 160px !important;
+    width: clamp(130px, 32vh, 170px) !important;
+    height: auto !important;
   }
   
   .instructions h3 {
-    font-size: 0.9rem;
-    margin-bottom: 5px;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
   }
   
   .step-num {
@@ -428,19 +443,20 @@ const hideDevMode = () => {
   }
   
   .test-badge {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   
   .form-group {
-    margin-bottom: 10px;
-  }
-  
-  .input {
-    padding: 8px;
+    margin-bottom: 8px;
   }
   
   .btn {
-    padding: 8px;
+    padding: 7px;
+    font-size: 0.85rem;
+  }
+
+  .footer-actions {
+    gap: 12px;
   }
 }
 </style>

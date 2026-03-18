@@ -55,14 +55,15 @@ defineEmits(['dismiss'])
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 60px;
+  gap: clamp(20px, 8vh, 60px);
+  padding: 12px;
 }
 
 .logo-text {
-  font-size: 5rem;
+  font-size: clamp(2.2rem, 10vh, 5rem);
   font-weight: 800;
   letter-spacing: -3px;
-  margin-bottom: 20px;
+  margin-bottom: clamp(8px, 2vh, 20px);
 }
 
 .logo-icon {
@@ -72,11 +73,11 @@ defineEmits(['dismiss'])
 }
 
 .tagline {
-  font-size: 1.5rem;
+  font-size: clamp(0.9rem, 3.2vh, 1.5rem);
   color: var(--text-muted);
-  letter-spacing: 5px;
+  letter-spacing: clamp(1px, 0.7vw, 5px);
   text-transform: uppercase;
-  margin-bottom: 40px;
+  margin-bottom: clamp(10px, 4vh, 40px);
 }
 
 .tap-to-start {
@@ -87,7 +88,7 @@ defineEmits(['dismiss'])
 }
 
 .tap-text {
-  font-size: 1.2rem;
+  font-size: clamp(0.9rem, 2.8vh, 1.2rem);
   font-weight: 600;
   color: var(--primary);
   opacity: 0.8;
@@ -192,10 +193,10 @@ defineEmits(['dismiss'])
   66% { transform: translate(-50px, 100px) scale(0.9); }
 }
 
-@media (max-height: 480px) {
-  .logo-text { font-size: 3rem; }
-  .logo-icon svg { width: 60px; height: 60px; }
-  .tagline { font-size: 1rem; margin-bottom: 20px; }
-  .screensaver-content { gap: 30px; }
+@media (max-width: 800px), (max-height: 480px) {
+  .logo-text { font-size: clamp(1.8rem, 8vh, 3rem); }
+  .logo-icon :deep(svg) { width: clamp(56px, 12vh, 80px); height: clamp(56px, 12vh, 80px); }
+  .tagline { font-size: 0.85rem; margin-bottom: 14px; }
+  .screensaver-content { gap: 18px; }
 }
 </style>

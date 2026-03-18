@@ -163,27 +163,27 @@ const handleCancelCharging = async () => {
     <div class="progress-card glass-panel">
       <!-- Circular Progress -->
       <div class="circular-wrapper">
-        <svg class="progress-ring" width="260" height="260">
+        <svg class="progress-ring" viewBox="0 0 100 100" aria-hidden="true">
           <circle
             stroke="rgba(0,0,0,0.05)"
-            stroke-width="12"
+            stroke-width="5"
             fill="transparent"
-            r="120"
-            cx="130"
-            cy="130"
+            r="45"
+            cx="50"
+            cy="50"
           />
           <circle
             class="progress-ring-circle"
             :stroke="isComplete ? '#38ef7d' : '#11998e'"
-            stroke-width="12"
+            stroke-width="5"
             fill="transparent"
-            r="120"
-            cx="130"
-            cy="130"
+            r="45"
+            cx="50"
+            cy="50"
             stroke-linecap="round"
             :style="{
-              strokeDasharray: `${2 * Math.PI * 120}`,
-              strokeDashoffset: `${2 * Math.PI * 120 * (1 - progressPercentage / 100)}`
+              strokeDasharray: `${2 * Math.PI * 45}`,
+              strokeDashoffset: `${2 * Math.PI * 45 * (1 - progressPercentage / 100)}`
             }"
           />
         </svg>
@@ -225,22 +225,25 @@ const handleCancelCharging = async () => {
 }
 
 .progress-card {
-  padding: 50px;
+  padding: clamp(16px, 5vh, 50px);
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 500px;
+  max-width: min(500px, 100%);
+  gap: clamp(12px, 2vh, 24px);
 }
 
 .circular-wrapper {
   position: relative;
-  width: 260px;
-  height: 260px;
-  margin-bottom: 30px;
+  width: clamp(170px, 42vh, 260px);
+  aspect-ratio: 1 / 1;
+  margin-bottom: 0;
 }
 
 .progress-ring {
+  width: 100%;
+  height: 100%;
   transform: rotate(-90deg);
 }
 
@@ -259,7 +262,7 @@ const handleCancelCharging = async () => {
 }
 
 .timer {
-  font-size: 3.5rem;
+  font-size: clamp(2rem, 7vh, 3.5rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -268,14 +271,14 @@ const handleCancelCharging = async () => {
 }
 
 .check-icon {
-  font-size: 5rem;
+  font-size: clamp(2.5rem, 8vh, 5rem);
   color: var(--secondary);
   line-height: 1;
   animation: scaleIn 0.5s var(--ease-spring);
 }
 
 .port-tag {
-  font-size: 0.9rem;
+  font-size: clamp(0.75rem, 1.8vh, 0.9rem);
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--text-muted);
@@ -287,7 +290,7 @@ const handleCancelCharging = async () => {
 }
 
 .status-main {
-  font-size: 2rem;
+  font-size: clamp(1.2rem, 4vh, 2rem);
   font-weight: 700;
   margin-bottom: 10px;
   color: var(--text-main);
@@ -296,17 +299,17 @@ const handleCancelCharging = async () => {
 }
 
 .status-sub {
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 2.2vh, 1.1rem);
   color: var(--secondary);
 }
 
 .cancel-btn {
-  margin-top: 30px;
-  padding: 12px 30px;
+  margin-top: 6px;
+  padding: 10px 18px;
   background: rgba(220, 38, 38, 0.1);
   border: 2px solid #dc2626;
   color: #dc2626;
-  font-size: 1rem;
+  font-size: clamp(0.85rem, 2vh, 1rem);
   font-weight: 700;
   border-radius: var(--radius-xl);
   cursor: pointer;
@@ -332,37 +335,34 @@ const handleCancelCharging = async () => {
   to { transform: scale(1); opacity: 1; }
 }
 
-@media (max-height: 480px) {
+@media (max-width: 800px), (max-height: 480px) {
   .progress-card {
-    padding: 20px;
+    padding: 14px;
     flex-direction: row;
-    gap: 40px;
+    gap: 16px;
     max-width: 600px;
+    align-items: center;
   }
   
   .circular-wrapper {
-    width: 180px;
-    height: 180px;
+    width: clamp(130px, 33vh, 180px);
     margin-bottom: 0;
   }
-  
-  .progress-ring {
-    width: 180px;
-    height: 180px;
-  }
-  
-  /* Scale SVG internals via CSS transform if needed, or rely on viewBox scaling if responsive */
-  .progress-ring {
-    transform: rotate(-90deg) scale(0.7); 
-    transform-origin: center;
+
+  .status-box {
+    text-align: left;
   }
   
   .timer {
-    font-size: 2.5rem;
+    font-size: clamp(1.7rem, 6vh, 2.4rem);
   }
   
   .status-main {
-    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+
+  .cancel-btn {
+    padding: 8px 12px;
   }
 }
 </style>

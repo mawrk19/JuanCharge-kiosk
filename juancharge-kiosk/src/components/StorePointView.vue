@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import QRCode from 'qrcode'
-import { CheckCircle, ArrowLeft } from 'lucide-vue-next'
+import { CheckCircle } from 'lucide-vue-next'
 import Swal from 'sweetalert2'
 
 const props = defineProps({
@@ -18,20 +18,42 @@ const props = defineProps({
 const emit = defineEmits(['done', 'cancel'])
 const canvasRef = ref(null)
 
+const getQrSize = () => {
+  const minSide = Math.min(window.innerWidth, window.innerHeight)
+  return Math.max(150, Math.min(300, Math.floor(minSide * 0.42)))
+}
+
+const renderQrCode = () => {
+  if (!canvasRef.value || !props.qrData) return
+
+  QRCode.toCanvas(canvasRef.value, props.qrData, {
+    width: getQrSize(),
+    margin: 1,
+    errorCorrectionLevel: 'L',
+    color: {
+      dark: '#000000',
+      light: '#ffffff'
+    }
+  }, (error) => {
+    if (error) console.error(error)
+  })
+}
+
+const handleResize = () => {
+  renderQrCode()
+}
+
 onMounted(() => {
-  if (canvasRef.value && props.qrData) {
-    QRCode.toCanvas(canvasRef.value, props.qrData, { 
-      width: 300,
-      margin: 1,
-      errorCorrectionLevel: 'L',
-      color: {
-        dark: '#000000',
-        light: '#ffffff'
-      }
-    }, (error) => {
-      if (error) console.error(error)
-    })
-  }
+  renderQrCode()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
+
+watch(() => props.qrData, () => {
+  renderQrCode()
 })
 
 
@@ -88,19 +110,20 @@ function handleCancel() {
   flex-direction: column;
   align-items: center;
   width: 100%;
+  gap: clamp(10px, 2.5vh, 20px);
 }
 
 .actions {
   display: flex;
   gap: 20px;
-  margin-top: 30px;
+  margin-top: 0;
 }
 
 .done-btn, .back-btn {
-  padding: 15px 40px;
+  padding: 10px 26px;
   background: white;
   border: none;
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 2.1vh, 1.1rem);
   font-weight: 700;
   border-radius: var(--radius-xl);
   cursor: pointer;
@@ -127,26 +150,31 @@ function handleCancel() {
 }
 
 .view-title {
-  font-size: 2.2rem;
+  font-size: clamp(1.4rem, 4.4vh, 2.2rem);
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .card {
-  padding: 30px;
+  padding: clamp(14px, 3vh, 30px);
   width: 100%;
   max-width: 450px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: clamp(10px, 2vh, 20px);
 }
 
 .qr-box {
   background: white;
-  padding: 12px;
+  padding: clamp(8px, 1.5vh, 12px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
+}
+
+.qr-box canvas {
+  width: min(100%, 300px);
+  height: auto;
 }
 
 .info-box {
@@ -161,7 +189,7 @@ function handleCancel() {
 }
 
 .points-badge .value {
-  font-size: 2.5rem;
+  font-size: clamp(1.8rem, 5vh, 2.5rem);
   font-weight: 800;
   color: var(--secondary);
   line-height: 1;
@@ -176,46 +204,48 @@ function handleCancel() {
 }
 
 .instruction {
-  font-size: 1rem;
+  font-size: clamp(0.82rem, 2vh, 1rem);
   line-height: 1.5;
   color: var(--text-main);
   opacity: 0.9;
 }
 
-@media (max-height: 480px) {
+@media (max-width: 800px), (max-height: 480px) {
   .view-title {
-    font-size: 1.8rem;
-    margin-bottom: 15px;
+    font-size: 1.35rem;
   }
   
   .card {
-    padding: 20px;
-    gap: 15px;
+    padding: 12px;
+    gap: 12px;
     flex-direction: row;
     max-width: 600px;
+    align-items: center;
   }
   
+  .qr-box {
+    flex-shrink: 0;
+  }
+
   .qr-box canvas {
-    width: 200px !important;
-    height: 200px !important;
+    max-width: 180px;
   }
   
   .points-badge .value {
-    font-size: 2.2rem;
+    font-size: 1.8rem;
   }
   
   .instruction {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
   }
   
   .actions {
-    margin-top: 15px;
-    gap: 15px;
+    gap: 12px;
   }
   
   .done-btn, .back-btn {
-    padding: 8px 25px;
-    font-size: 0.95rem;
+    padding: 8px 16px;
+    font-size: 0.86rem;
   }
 }
 </style>
