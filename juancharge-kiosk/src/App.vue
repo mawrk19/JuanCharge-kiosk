@@ -724,16 +724,30 @@ function isPortDisabled(portNumber) {
             </div>
 
             <aside class="instruction-panel glass-panel">
-              <h2>♻️ BEFORE INSERTING</h2>
-              <ul>
-                <li>Empty all liquid</li>
-                <li>Remove any contents or liquids</li>
-                <li><strong>Accepted items only:</strong></li>
-                <li class="accepted-item">PET bottles</li>
-                <li class="accepted-item">Tin cans</li>
-                <li class="accepted-item">Aluminum cans</li>
-                <li>Insert one item at a time</li>
+              <h2>♻️ Before Inserting</h2>
+
+              <ul class="instruction-list">
+                <li>Make sure all bottles and containers are completely empty</li>
+                <li>Remove any leftover contents such as liquids, trash, or residue</li>
               </ul>
+
+              <div class="section">
+                <p class="section-title">Accepted Items Only</p>
+                <ul class="accepted-list">
+                  <li>PET plastic bottles</li>
+                  <li>Tin cans</li>
+                  <li>Aluminum cans</li>
+                </ul>
+              </div>
+
+              <div class="section">
+                <p class="section-title">How to Insert</p>
+                <ul class="instruction-list">
+                  <li>Insert only one item at a time</li>
+                  <li>Place the item properly into the slot</li>
+                  <li>Wait for the system to process before inserting the next item</li>
+                </ul>
+              </div>
             </aside>
           </div>
         </div>
@@ -1063,10 +1077,38 @@ function isPortDisabled(portNumber) {
   margin-left: 4px;
 }
 
-.instruction-panel .accepted-item {
-  margin-left: 8px;
-  font-weight: 800;
-  color: #064e3b;
+  .instruction-list,
+  .accepted-list {
+    list-style-type: disc;
+    margin: 0 0 10px;
+    padding-left: 20px;
+  }
+
+  .section {
+    margin: 12px 0;
+    padding: 10px;
+    background: rgba(17, 153, 142, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(56, 239, 125, 0.3);
+  }
+
+  .section-title {
+    font-size: clamp(0.95rem, 2.3vh, 1.1rem);
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #0f5132;
+  }
+
+  .instruction-list li,
+  .accepted-list li {
+    margin-bottom: 8px;
+    line-height: 1.45;
+  }
+
+  .instruction-panel .accepted-item {
+    margin-left: 8px;
+    font-weight: 800;
+    color: #064e3b;
 }
 
 .instruction-panel h3 {
