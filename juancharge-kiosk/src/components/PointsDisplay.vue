@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, defineExpose, computed } from 'vue'
 import { Zap } from 'lucide-vue-next'
+import Swal from 'sweetalert2'
 
 const points = ref(0) // Start at 0, will update when data is loaded
 const loading = ref(true)
@@ -8,6 +9,9 @@ const error = ref(null)
 const date = ref(null)
 const itemType = ref(null)
 const fetchInterval = null
+
+const walletClickCount = ref(0)
+let walletClickTimeout = null
 
 async function fetchPoints() {
   // Always fetch to check for new data - backend handles showing 0 if reset and no new data
@@ -25,6 +29,11 @@ async function fetchPoints() {
       
       if (!data) {
         throw new Error('No data received from Electron')
+      }
+
+      // Show rejection modal(s) when items are rejected by scanner category rules
+      if (Array.isArray(data.rejections) && data.rejections.length > 0) {
+        showRejectionNotification(data.rejections)
       }
       
       // Update points - backend only counts unused items
@@ -94,6 +103,94 @@ function convertPointsToTime(pts) {
   return `${minutes} min`
 }
 
+function showRejectionNotification(rejections) {
+  const byType = rejections.reduce((acc, item) => {
+    const type = item.rejection_type || 'Rejected'
+    if (!acc[type]) acc[type] = []
+    acc[type].push(item.rejection_reason || 'No rejection reason provided')
+    return acc
+  }, {})
+
+  const htmlContent = Object.entries(byType).map(([type, reasons]) => {
+    const uniqueReasons = Array.from(new Set(reasons))
+    return `<strong>${type}</strong>: ${uniqueReasons.map(r => `${r}`).join('<br>')}`
+  }).join('<hr>')
+
+  Swal.fire({
+    title: 'Rejected item(s) detected',
+    html: htmlContent || 'No details available',
+    icon: 'error',
+    timer: 5000,
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    background: '#ffdddd',
+    color: '#7f1d1d',
+    timerProgressBar: true,
+    customClass: {
+      popup: 'rejection-alert-popup',
+      title: 'rejection-alert-title',
+      htmlContainer: 'rejection-alert-text'
+    }
+  })
+}
+
+async function injectDebugRejectedItem() {
+  if (!window.electronAPI || typeof window.electronAPI.invoke !== 'function') {
+    console.error('electronAPI.invoke not available')
+    return
+  }
+
+  try {
+    const result = await window.electronAPI.invoke('add-debug-rejected-item')
+
+    if (result.success) {
+      Swal.fire({
+        title: 'Test item added',
+        text: 'Rejected test item inserted into tracked_tracked.json',
+        icon: 'success',
+        timer: 1700,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        background: '#dcfce7',
+        color: '#166534'
+      })
+
+      await fetchPoints()
+    } else {
+      Swal.fire({
+        title: 'Failed',
+        text: result.error || 'Could not add debug item',
+        icon: 'error',
+        timer: 2500,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false
+      })
+    }
+  } catch (err) {
+    console.error('Failed to add debug rejected item:', err)
+  }
+}
+
+function handleWalletTitlePress() {
+  walletClickCount.value += 1
+
+  if (walletClickTimeout) {
+    clearTimeout(walletClickTimeout)
+  }
+
+  walletClickTimeout = setTimeout(() => {
+    walletClickCount.value = 0
+  }, 1500)
+
+  if (walletClickCount.value >= 3) {
+    walletClickCount.value = 0
+    injectDebugRejectedItem()
+  }
+}
+
 defineExpose({
   resetPoints,
   refreshPoints,
@@ -145,7 +242,7 @@ onMounted(() => {
     </div>
     
     <div class="card-footer">
-      <div class="footer-info">JuanCharge Wallet</div>
+      <div class="footer-info" @click="handleWalletTitlePress" title="Debug: tap 3x for rejection test">JuanCharge Wallet</div>
     </div>
   </div>
 </template>
@@ -217,6 +314,19 @@ onMounted(() => {
 
 .status-indicator.error {
   background: var(--accent-red);
+}
+
+.rejection-alert-popup {
+  border-left: 6px solid #dc2626; /* red accent */
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.35);
+}
+
+.rejection-alert-title {
+  color: #b91c1c !important;
+}
+
+.rejection-alert-text {
+  color: #7f1d1d;
 }
 
 .points-content {
