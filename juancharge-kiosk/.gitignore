@@ -47,3 +47,6 @@ coverage
 
 # Build artifacts
 *.tsbuildinfo
+
+# Transaction JSON
+transaction.json

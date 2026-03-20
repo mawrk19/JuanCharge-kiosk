@@ -2,401 +2,398 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import crypto from 'crypto';
+import Database from 'better-sqlite3';
+import axios from 'axios';
+import * as relayController from './relay_controller.js';
+import * as jose from 'jose';
+import 'dotenv/config'; // Load env vars
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// KIOSK PRIVATE KEY
+const PRIVATE_KEY_PEM = process.env.PRIVATE_KEY ? process.env.PRIVATE_KEY.replace(/\\n/g, '\n') : '';
+
+if (!PRIVATE_KEY_PEM) {
+  console.error("CRITICAL: PRIVATE_KEY not found in environment variables.");
+}
+
+// Global reference to main window for event emission
+let mainWindow = null;
+
+// API Configuration
+const API_BASE_URL = process.env.API_BASE_URL;
+const KIOSK_CODE = process.env.KIOSK_CODE;
+const KIOSK_SECRET_KEY = process.env.KIOSK_SECRET_KEY;
+
+// Helper: Generate HMAC SHA256 Signature
+function generateSignature(dataString) {
+  return crypto.createHmac('sha256', KIOSK_SECRET_KEY).update(dataString).digest('hex');
+}
+
+// Initialize Database
+const userDataPath = app.getPath('userData');
+const dbPath = path.join(userDataPath, 'juancharge.db');
+console.log('Database path:', dbPath);
+
+// Ensure DB directory exists
+if (!fs.existsSync(userDataPath)) {
+  fs.mkdirSync(userDataPath, { recursive: true });
+}
+
+let db;
+try {
+  db = new Database(dbPath);
+  console.log('Database connected successfully');
+} catch (err) {
+  console.error('Failed to connect to database:', err);
+}
+
+// Create tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS transactions (
+    id TEXT PRIMARY KEY,
+    action TEXT,
+    port INTEGER,
+    start_time TEXT,
+    end_time TEXT,
+    total_points INTEGER DEFAULT 0,
+    synced INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS transaction_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    transaction_id TEXT,
+    file_name TEXT,
+    file_index INTEGER,
+    item_type TEXT,
+    points INTEGER,
+    date TEXT,
+    processed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(file_name, file_index)
+  );
+  
+  CREATE TABLE IF NOT EXISTS vouchers (
+    id TEXT PRIMARY KEY, 
+    transaction_id TEXT,
+    points INTEGER,
+    payload TEXT, 
+    signature TEXT,
+    status TEXT DEFAULT 'generated', 
+    created_at TEXT
+  );
+  
+  CREATE TABLE IF NOT EXISTS charging_sessions (
+    id TEXT PRIMARY KEY,
+    port INTEGER NOT NULL,
+    points INTEGER NOT NULL,
+    duration_seconds INTEGER NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT,
+    status TEXT DEFAULT 'active',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+// Register relay status change callback
+relayController.setStatusChangeCallback((statuses) => {
+  emitToRenderer('charging-status-changed', { statuses });
+});
+
 function createWindow() {
-  // Use absolute path for preload script
   const preloadPath = path.resolve(__dirname, 'preload.js');
-  console.log('=== Creating Window ===');
-  console.log('__dirname:', __dirname);
-  console.log('Preload script path:', preloadPath);
-  console.log('Preload script exists:', fs.existsSync(preloadPath));
-  
-  if (!fs.existsSync(preloadPath)) {
-    console.error('❌ ERROR: Preload script not found at:', preloadPath);
-    // Try alternative path
-    const altPath = path.join(process.cwd(), 'electron', 'preload.js');
-    console.log('Trying alternative path:', altPath);
-    console.log('Alternative exists:', fs.existsSync(altPath));
-  }
-  
+
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 800,
+    height: 480,
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false, // Allow loading from localhost
+      webSecurity: false,
       enableRemoteModule: false
     },
-    fullscreen: false,
+    fullscreen: true,
+    frame: false,
     autoHideMenuBar: true
   });
 
-  // Open DevTools for debugging
-  win.webContents.openDevTools();
+  // Store window reference for event emission
+  mainWindow = win;
 
-  // Log preload script errors
-  win.webContents.on('preload-error', (event, preloadPath, error) => {
-    console.error('❌ Preload script error:', preloadPath, error);
-    console.error('Error details:', error.message, error.stack);
-  });
-  
-  // Log when preload script finishes loading
-  win.webContents.on('did-attach-webview', () => {
-    console.log('Webview attached');
-  });
-
-  // Load Vue (Vite dev or build)
+  // win.webContents.openDevTools();
   win.loadURL('http://localhost:5173');
-  
-  // Log when page is loaded
-  win.webContents.on('did-finish-load', () => {
-    console.log('✅ Page finished loading');
-    // Wait a bit for preload to finish, then check multiple times
-    const checkAPI = (attempt = 1) => {
-      setTimeout(() => {
-        // Try to execute script to check if electronAPI is available
-        win.webContents.executeJavaScript(`
-          (function() {
-            console.log('=== Checking electronAPI from main process (attempt ${attempt}) ===');
-            console.log('window.electronAPI:', window.electronAPI);
-            console.log('typeof window.electronAPI:', typeof window.electronAPI);
-            if (window.electronAPI) {
-              console.log('✅ electronAPI found!');
-              console.log('electronAPI.invoke:', typeof window.electronAPI.invoke);
-              return 'API available';
-            } else {
-              console.log('❌ electronAPI NOT found');
-              console.log('Available window properties:', Object.keys(window).filter(k => k.toLowerCase().includes('electron')));
-              return 'API NOT available';
-            }
-          })();
-        `).then(result => {
-          console.log(`Attempt ${attempt} - Result from page:`, result);
-          if (result === 'API NOT available' && attempt < 5) {
-            checkAPI(attempt + 1);
-          }
-        }).catch(err => {
-          console.error(`Attempt ${attempt} - Error executing script:`, err);
-          if (attempt < 5) {
-            checkAPI(attempt + 1);
-          }
-        });
-      }, 500 * attempt);
-    };
-    checkAPI(1);
-  });
-  
-  // Also check on DOM ready
-  win.webContents.on('dom-ready', () => {
-    console.log('✅ DOM ready');
-  });
-  
-  // Check console messages from renderer
-  win.webContents.on('console-message', (event, level, message, line, sourceId) => {
-    if (message.includes('Preload') || message.includes('electronAPI')) {
-      console.log(`[Renderer ${level}]:`, message);
-    }
-  });
 }
 
-// IPC handler to get latest points from Tracked_json folder
+// Helper to get current active transaction
+function getActiveTransaction() {
+  return db.prepare('SELECT * FROM transactions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1').get();
+}
+
+function createTransaction(action = 'initial', port = null, points = 0) {
+  const id = Date.now().toString();
+  const startTime = new Date().toISOString();
+  db.prepare('INSERT INTO transactions (id, action, port, start_time, total_points) VALUES (?, ?, ?, ?, ?)')
+    .run(id, action, port, startTime, points);
+  return id;
+}
+
+function recordChargingSession(port, points, durationSeconds, endTime) {
+  const sessionId = Date.now().toString();
+  db.prepare(`
+    INSERT INTO charging_sessions (id, port, points, duration_seconds, start_time, end_time, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'active')
+  `).run(sessionId, port, points, durationSeconds, new Date().toISOString(), endTime);
+  return sessionId;
+}
+
+// IPC handler to get latest points
 ipcMain.handle('get-latest-points', async () => {
   try {
-    // Use path relative to the project root (where package.json is)
     const projectRoot = path.resolve(__dirname, '..');
     const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
-    console.log('IPC handler called: get-latest-points');
-    console.log('Project root:', projectRoot);
-    console.log('Reading from path:', trackedJsonPath);
-    
-    // Check if directory exists, create it if it doesn't
+
     if (!fs.existsSync(trackedJsonPath)) {
-      console.log(`Directory not found, creating: ${trackedJsonPath}`);
-      try {
-        fs.mkdirSync(trackedJsonPath, { recursive: true });
-        console.log('Directory created successfully');
-      } catch (mkdirError) {
-        console.error(`Failed to create directory: ${mkdirError.message}`);
-        return { error: `Directory not found and could not be created: ${trackedJsonPath}`, points: 0 };
-      }
+      fs.mkdirSync(trackedJsonPath, { recursive: true });
     }
-    
-    // Read all JSON files matching the pattern tracked_items_YYYY-MM-DD.json
+
+    // Get active transaction or create one
+    let txn = getActiveTransaction();
+    if (!txn) {
+      const id = createTransaction();
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+    }
+
+    // Read JSON files (all tracked_*.json, including tracked_tracked.json)
     const files = fs.readdirSync(trackedJsonPath)
-      .filter(file => {
-        // Match files like tracked_items_2025-11-07.json
-        return file.startsWith('tracked_items_') && file.endsWith('.json');
-      })
-      .map(file => {
-        const filePath = path.join(trackedJsonPath, file);
-        const stats = fs.statSync(filePath);
-        // Extract date from filename (tracked_items_YYYY-MM-DD.json)
-        const dateMatch = file.match(/tracked_items_(\d{4}-\d{2}-\d{2})\.json/);
-        const fileDate = dateMatch ? dateMatch[1] : null;
-        
-        return {
-          name: file,
-          path: filePath,
-          mtime: stats.mtime,
-          fileDate: fileDate
-        };
-      });
-    
-    if (files.length === 0) {
-      return { error: `No tracked_items_*.json files found in ${trackedJsonPath}`, points: 0 };
-    }
-    
-    // Sort by modification time (most recent first), then by filename date as fallback
-    files.sort((a, b) => {
-      // First sort by modification time
-      if (b.mtime.getTime() !== a.mtime.getTime()) {
-        return b.mtime - a.mtime;
-      }
-      // If modification times are equal, sort by date in filename (most recent first)
-      if (a.fileDate && b.fileDate) {
-        return b.fileDate.localeCompare(a.fileDate);
-      }
-      return 0;
-    });
-    const latestFile = files[0];
-    console.log(`Found latest file: ${latestFile.name} (modified: ${latestFile.mtime})`);
-    
-    // Read and parse the latest JSON file
-    const fileContent = fs.readFileSync(latestFile.path, 'utf-8');
-    const jsonData = JSON.parse(fileContent);
-    console.log(`Parsed JSON file with ${jsonData.length} items`);
-    
-    if (!Array.isArray(jsonData) || jsonData.length === 0) {
-      return { error: 'Invalid JSON format or empty array', points: 0 };
-    }
-    
-    // Get current transaction - points come from transaction, not JSON calculation
-    const transactionData = loadTransactions();
-    const currentTransaction = transactionData.currentTransactionId 
-      ? transactionData.transactions.find(t => t.id === transactionData.currentTransactionId)
-      : null;
-    
-    // If no transaction exists, create one automatically
-    if (!currentTransaction) {
-      console.log('No transaction exists, creating initial transaction...');
-      const newTransactionId = Date.now().toString();
-      const newTransaction = {
-        id: newTransactionId,
-        action: 'initial',
-        port: null,
-        startTime: new Date().toISOString(),
-        endTime: null,
-        usedItems: [],
-        totalPoints: 0
-      };
-      transactionData.transactions.push(newTransaction);
-      transactionData.currentTransactionId = newTransactionId;
-      saveTransactions(transactionData);
-      console.log('Initial transaction created:', newTransactionId);
-    }
-    
-    // Get the current transaction (or the one we just created)
-    const activeTransaction = transactionData.transactions.find(
-      t => t.id === transactionData.currentTransactionId
-    );
-    
-    // Create a set of used item identifiers (fileName:index)
-    const usedItems = new Set();
-    if (activeTransaction && activeTransaction.usedItems) {
-      activeTransaction.usedItems.forEach(item => {
-        usedItems.add(`${item.fileName}:${item.index}`);
-      });
-    }
-    
-    // Check for new unused items in the JSON file and add their points to transaction
-    let newItemsFound = 0;
+      .filter(file => file.startsWith('tracked_') && file.endsWith('.json'));
+
     let newPointsAdded = 0;
-    const newUsedItems = [];
-    
-    jsonData.forEach((item, index) => {
-      const itemKey = `${latestFile.name}:${index}`;
-      
-      // If this item hasn't been used yet, add it to the transaction
-      if (!usedItems.has(itemKey)) {
-        const itemPoints = item.points || 0;
-        newPointsAdded += itemPoints;
-        newItemsFound++;
-        
-        // Mark this item as used
-        newUsedItems.push({
-          fileName: latestFile.name,
-          index: index,
-          date: item.date,
-          itemType: item.item_type,
-          points: itemPoints
+    const newRejections = [];
+
+    // Check global processed items
+    // If file_name + file_index is in transaction_items, it's processed.
+
+    for (const file of files) {
+      const filePath = path.join(trackedJsonPath, file);
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const items = JSON.parse(content);
+
+        items.forEach((item, index) => {
+          // efficient existence check using UNIQUE constraint or SELECT
+          const exists = db.prepare('SELECT 1 FROM transaction_items WHERE file_name = ? AND file_index = ?').get(file, index);
+
+          if (!exists) {
+            const points = item.points || 0;
+            newPointsAdded += points;
+
+            // Handle item_type as array or string
+            const itemType = Array.isArray(item.item_type)
+              ? item.item_type.join(', ')
+              : (item.item_type || 'unknown');
+
+            // Track new rejection items for frontend notification.
+            if (item.rejection_reason) {
+              const rejectionReason = `${item.rejection_reason}`.trim();
+              const rejectionType = rejectionReason.split('-')[0].trim();
+              newRejections.push({ file, index, item_type: itemType, points, rejection_reason: rejectionReason, rejection_type: rejectionType });
+            }
+
+            db.prepare('INSERT INTO transaction_items (transaction_id, file_name, file_index, item_type, points, date) VALUES (?, ?, ?, ?, ?, ?)')
+              .run(txn.id, file, index, itemType, points, item.date || new Date().toISOString());
+          }
         });
+      } catch (err) {
+        console.error(`Error reading ${file}:`, err);
       }
-    });
-    
-    // Update transaction with new items and points
-    if (newItemsFound > 0) {
-      activeTransaction.usedItems.push(...newUsedItems);
-      activeTransaction.totalPoints += newPointsAdded;
-      saveTransactions(transactionData);
-      console.log(`Added ${newItemsFound} new items, ${newPointsAdded} points to transaction ${activeTransaction.id}`);
     }
-    
-    // Return points from transaction, not from JSON calculation
-    const pointsFromTransaction = activeTransaction ? activeTransaction.totalPoints : 0;
-    
-    console.log(`Transaction points: ${pointsFromTransaction} (from transaction ${activeTransaction.id})`);
-    
-    const result = {
-      points: pointsFromTransaction,
-      date: latestFile.name, // Just for reference
-      itemType: 'Transaction',
-      fileName: latestFile.name,
-      itemCount: jsonData.length,
-      unusedItemCount: jsonData.length - usedItems.size,
-      fileModifiedTime: latestFile.mtime.getTime(),
-      hasActiveTransaction: !!activeTransaction,
-      transactionId: activeTransaction ? activeTransaction.id : null
+
+    if (newPointsAdded > 0) {
+      db.prepare('UPDATE transactions SET total_points = total_points + ? WHERE id = ?')
+        .run(newPointsAdded, txn.id);
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txn.id);
+    }
+
+    return {
+      points: txn.total_points,
+      transactionId: txn.id,
+      itemCount: 0,
+      unusedItemCount: 0,
+      rejections: newRejections
     };
-    
-    console.log('Returning result:', JSON.stringify(result, null, 2));
-    return result;
+
   } catch (error) {
     console.error('Error reading points:', error);
-    console.error('Error stack:', error.stack);
     return { error: error.message, points: 0 };
   }
 });
 
-// Transaction file path
-function getTransactionsPath() {
-  const projectRoot = path.resolve(__dirname, '..');
-  return path.join(projectRoot, 'transactions.json');
-}
+// IPC handler to get kiosk config
+ipcMain.handle('get-kiosk-config', async () => {
+  return {
+    kiosk_code: KIOSK_CODE,
+    api_base_url: API_BASE_URL
+  };
+});
 
-// Load transactions from file
-function loadTransactions() {
-  const transactionsPath = getTransactionsPath();
-  if (fs.existsSync(transactionsPath)) {
-    try {
-      const content = fs.readFileSync(transactionsPath, 'utf-8');
-      return JSON.parse(content);
-    } catch (error) {
-      console.error('Error loading transactions:', error);
-      return { transactions: [], currentTransactionId: null };
-    }
-  }
-  return { transactions: [], currentTransactionId: null };
-}
-
-// Save transactions to file
-function saveTransactions(data) {
-  const transactionsPath = getTransactionsPath();
+// IPC handler for debug: add one rejected item to tracked_tracked.json
+ipcMain.handle('add-debug-rejected-item', async () => {
   try {
-    fs.writeFileSync(transactionsPath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (error) {
-    console.error('Error saving transactions:', error);
-  }
-}
+    const projectRoot = path.resolve(__dirname, '..');
+    const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
+    const targetFile = path.join(trackedJsonPath, 'tracked_tracked.json');
 
-// Get current active transaction
-function getCurrentTransaction() {
-  const data = loadTransactions();
-  if (data.currentTransactionId) {
-    return data.transactions.find(t => t.id === data.currentTransactionId);
+    if (!fs.existsSync(trackedJsonPath)) {
+      fs.mkdirSync(trackedJsonPath, { recursive: true });
+    }
+
+    let entries = [];
+    if (fs.existsSync(targetFile)) {
+      const current = fs.readFileSync(targetFile, 'utf-8');
+      try {
+        const parsed = JSON.parse(current);
+        if (Array.isArray(parsed)) entries = parsed;
+      } catch (err) {
+        console.warn('Could not parse existing tracked_tracked.json, overwriting with fresh array', err.message);
+        entries = [];
+      }
+    }
+
+    const now = new Date().toISOString();
+    const rejectedItem = {
+      date: now,
+      item_type: 'glass bottle',
+      points: 0,
+      rejection_reason: 'Invalid item - not part of accepted categories'
+    };
+
+    entries.push(rejectedItem);
+    fs.writeFileSync(targetFile, JSON.stringify(entries, null, 2), 'utf-8');
+
+    return { success: true, inserted: rejectedItem };
+  } catch (error) {
+    console.error('Error in add-debug-rejected-item:', error);
+    return { success: false, error: error.message };
   }
-  return null;
-}
+});
+
+// IPC handler to generate signed voucher (JWT)
+ipcMain.handle('generate-signed-voucher', async (event, { amount }) => {
+  try {
+    // 1. Generate JWT Payload using HS256 (HMAC SHA256)
+    // This allows us to use the KIOSK_SECRET_KEY directly and creates a much smaller token
+    // suitable for low-quality QR scanning.
+
+    const voucherId = crypto.randomUUID();
+    const timestamp = Date.now();
+    const secretKey = new TextEncoder().encode(KIOSK_SECRET_KEY);
+
+    // We include the "signature" field inside the JWT payload itself to match schema
+    // even though the JWT itself is also signed.
+    const stringToSign = `${KIOSK_CODE}${voucherId}${amount}${timestamp}`;
+    const innerSignature = generateSignature(stringToSign);
+
+    const jwt = await new jose.SignJWT({
+      action: 'store_points',
+      kiosk_code: KIOSK_CODE,
+      txn_id: voucherId,
+      points: amount,
+      timestamp: timestamp,
+      signature: innerSignature, // HMAC signature inside JWT
+      nonce: crypto.randomUUID()
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setIssuer('kiosk-01')
+      .setExpirationTime('2h')
+      .sign(secretKey);
+
+    console.log('[QR] Generated HS256 JWT Voucher:', amount);
+
+    // 2. Consume points locally (Close transaction & Save Voucher)
+    let txn = getActiveTransaction();
+    if (txn) {
+      // End current transaction
+      db.prepare('UPDATE transactions SET end_time = ? WHERE id = ?')
+        .run(new Date().toISOString(), txn.id);
+
+      // Save voucher record to DB
+      db.prepare('INSERT INTO vouchers (id, transaction_id, points, payload, signature, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(voucherId, txn.id, amount, jwt, innerSignature, new Date().toISOString());
+    }
+
+    // 3. Start new transaction (Zero points)
+    createTransaction('store_points');
+
+    // Trigger sync in background
+    syncTransactionLogs().catch(err => console.error('Background sync failed:', err));
+
+    return { success: true, token: jwt };
+  } catch (error) {
+    console.error('Error generating signed voucher:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 // IPC handler to reset points (create new transaction)
 ipcMain.handle('reset-points', async (event, action = 'store', port = null) => {
   try {
-    const projectRoot = path.resolve(__dirname, '..');
-    const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
-    
-    // Load current transactions
-    const transactionData = loadTransactions();
-    
-    // End current transaction if exists
-    if (transactionData.currentTransactionId) {
-      const currentTransaction = transactionData.transactions.find(
-        t => t.id === transactionData.currentTransactionId
-      );
-      if (currentTransaction) {
-        currentTransaction.endTime = new Date().toISOString();
-        console.log('Ended transaction:', currentTransaction.id);
+    let txn = getActiveTransaction();
+    let qrPayload = null;
+    let pointsToStore = 0;
+
+    if (txn) {
+      // End current transaction
+      db.prepare('UPDATE transactions SET end_time = ? WHERE id = ?')
+        .run(new Date().toISOString(), txn.id);
+
+      // Get FRESH total points just in case
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txn.id);
+      pointsToStore = txn.total_points;
+
+      // If action is STORE and we have points, generate voucher
+      if (action === 'store' && pointsToStore > 0) {
+        const voucherId = crypto.randomUUID();
+        const timestamp = Date.now();
+        const kioskCode = process.env.KIOSK_CODE || 'KIOSK-001';
+        const secret = process.env.KIOSK_SECRET_KEY || 'default_secret_key';
+
+        // Payload matches backend expectations
+        // Payload: kiosk_code + txn_id + points + timestamp
+        const stringToSign = `${kioskCode}${voucherId}${pointsToStore}${timestamp}`;
+        const signature = crypto.createHmac('sha256', secret).update(stringToSign).digest('hex');
+
+        const payloadData = {
+          kiosk_code: kioskCode,
+          txn_id: voucherId,
+          points: pointsToStore,
+          timestamp: timestamp,
+          signature: signature
+        };
+
+        const payloadJson = JSON.stringify(payloadData);
+
+        // Save voucher to DB
+        db.prepare('INSERT INTO vouchers (id, transaction_id, points, payload, signature, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+          .run(voucherId, txn.id, pointsToStore, payloadJson, signature, new Date().toISOString());
+
+        qrPayload = payloadJson;
       }
     }
-    
-    // Get all files and mark all current items as used
-    const files = fs.readdirSync(trackedJsonPath)
-      .filter(file => file.startsWith('tracked_items_') && file.endsWith('.json'))
-      .map(file => {
-        const filePath = path.join(trackedJsonPath, file);
-        const stats = fs.statSync(filePath);
-        return {
-          name: file,
-          path: filePath,
-          mtime: stats.mtime
-        };
-      });
-    
-    const usedItems = [];
-    
-    if (files.length > 0) {
-      files.sort((a, b) => b.mtime - a.mtime);
-      
-      // Mark all items in all files as used
-      files.forEach(file => {
-        try {
-          const fileContent = fs.readFileSync(file.path, 'utf-8');
-          const jsonData = JSON.parse(fileContent);
-          
-          jsonData.forEach((item, index) => {
-            usedItems.push({
-              fileName: file.name,
-              index: index,
-              date: item.date,
-              itemType: item.item_type,
-              points: item.points || 0
-            });
-          });
-        } catch (error) {
-          console.error(`Error reading file ${file.name}:`, error);
-        }
-      });
-    }
-    
-    // Create new transaction starting at 0 points
-    const newTransactionId = Date.now().toString();
-    const newTransaction = {
-      id: newTransactionId,
-      action: action, // 'store' or 'use'
-      port: port,
-      startTime: new Date().toISOString(),
-      endTime: null,
-      usedItems: usedItems, // All current items are marked as used
-      totalPoints: 0 // New transaction starts at 0, will accumulate from new items only
-    };
-    
-    transactionData.transactions.push(newTransaction);
-    transactionData.currentTransactionId = newTransactionId;
-    
-    // Save transactions
-    saveTransactions(transactionData);
-    
-    console.log(`New transaction created: ${newTransactionId}, Action: ${action}, Port: ${port}`);
-    console.log(`Marked ${usedItems.length} items as used, transaction starts at 0 points`);
-    
-    return { 
-      success: true, 
-      transactionId: newTransactionId,
-      usedItemsCount: usedItems.length,
-      points: 0 // New transaction always starts at 0
+
+    // Start new transaction
+    createTransaction(action, port);
+
+    // Trigger sync in background
+    syncTransactionLogs().catch(err => console.error('Background sync failed:', err));
+
+    return {
+      success: true,
+      points: 0,
+      qrData: qrPayload,
+      storedPoints: pointsToStore
     };
   } catch (error) {
     console.error('Error resetting points:', error);
@@ -404,8 +401,631 @@ ipcMain.handle('reset-points', async (event, action = 'store', port = null) => {
   }
 });
 
-app.whenReady().then(createWindow);
+// Helper function to sync transactions
+async function syncTransactionLogs() {
+  console.log('Main: Starting transaction sync...');
+  try {
+    const unsynced = db.prepare('SELECT * FROM transactions WHERE synced = 0 AND end_time IS NOT NULL').all(); // Sync only finished sessions
+    
+    if (unsynced.length === 0) {
+      console.log('No unsynced transactions found.');
+      return { success: true, count: 0, message: 'No unsynced transactions' };
+    }
+
+    // Get all items associated with these transactions to send detailed logs
+    const logs = [];
+    for (const txn of unsynced) {
+      const items = db.prepare('SELECT * FROM transaction_items WHERE transaction_id = ?').all(txn.id);
+      
+      if (items.length > 0) {
+        items.forEach(item => {
+          // generate unique log id (use timestamp+random for simplicity)
+          const logId = `${item.id}-${Date.now()}`;
+          // ensure ISO timestamp
+          const isoTime = new Date(item.date || txn.start_time).toISOString();
+          logs.push({
+            log_id: logId,
+            transaction_id: txn.id,
+            item_type: item.item_type || 'mixed',
+            points: item.points || 0,
+            scanned_at: isoTime
+          });
+        });
+      } else {
+        const logId = `txn-${txn.id}-${Date.now()}`;
+        const isoTime = new Date(txn.start_time).toISOString();
+        logs.push({
+          log_id: logId,
+          transaction_id: txn.id,
+          item_type: 'mixed',
+          points: txn.total_points || 0,
+          scanned_at: isoTime
+        });
+      }
+    }
+
+    const payload = {
+      kiosk_code: KIOSK_CODE,
+      logs: logs
+    };
+
+    const payloadString = JSON.stringify(payload);
+    const signature = generateSignature(payloadString);
+
+    const url = `${API_BASE_URL}/kiosk/recycling-logs/sync`;
+    console.log(`Sending sync request to ${url} with ${logs.length} data rows.`);
+    console.log('DEBUG Payload:', payloadString);
+
+    const response = await axios({
+      method: 'post',
+      url: url,
+      data: payload,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Kiosk-Signature': signature,
+        'Accept': 'application/json'
+      }
+    });
+
+    // Log the actual response for debugging
+    console.log('--- SYNC ATTEMPT LOGS ---');
+    console.log('Payload sent:', JSON.stringify(payload, null, 2));
+    console.log('Signature:', signature);
+    console.log('Response Status:', response.status);
+    console.log('Response Data:', JSON.stringify(response.data, null, 2));
+
+    if (response.status === 200 || response.status === 201) {
+       console.log('Sync successful:', response.data);
+       const updateStmt = db.prepare('UPDATE transactions SET synced = 1 WHERE id = ?');
+       const transaction = db.transaction((ids) => {
+         for (const id of ids) updateStmt.run(id);
+       });
+       transaction(unsynced.map(t => t.id));
+       console.log(`Marked ${unsynced.length} transactions as synced.`);
+       return { success: true, count: unsynced.length };
+    } else {
+       console.warn('Sync failed with status:', response.status, response.data);
+       return { success: false, error: 'Sync failed', details: response.data };
+    }
+
+  } catch (error) {
+    console.error('Sync error:', error.message);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      return { success: false, error: error.message, details: error.response.data };
+    }
+    return { success: false, error: error.message };
+  }
+}
+
+// IPC handler to sync transactions
+ipcMain.handle('sync-transactions', syncTransactionLogs);
+
+
+// IPC handler to activate charging
+ipcMain.handle('activate-charging', async (event, { port, points }) => {
+  try {
+    // Validate input
+    if (!port || ![1, 2, 3].includes(port)) {
+      return { success: false, error: 'Invalid port number' };
+    }
+
+    if (!points || points <= 0) {
+      return { success: false, error: 'Invalid points amount' };
+    }
+
+    // Check if port is already in use
+    const portStatus = relayController.getRelayStatus(port);
+    if (portStatus.active) {
+      return { success: false, error: `Port ${port} is already in use` };
+    }
+
+    // Convert points to seconds (1 point = 60 seconds)
+    const durationSeconds = points * 60;
+
+    // Activate relay
+    const result = await relayController.activateRelay(port, durationSeconds);
+
+    if (!result.success) {
+      return result;
+    }
+
+    // Create charging session record
+    const sessionId = recordChargingSession(port, points, durationSeconds, result.endTime);
+
+    // Deduct points from active transaction
+    const txn = getActiveTransaction();
+    if (txn) {
+      // CRITICAL: Prevent negative points
+      const pointsToDeduct = Math.max(0, points);
+      if (txn.total_points < pointsToDeduct) {
+        return { success: false, error: 'Insufficient balance' };
+      }
+      db.prepare('UPDATE transactions SET total_points = total_points - ? WHERE id = ?')
+        .run(pointsToDeduct, txn.id);
+      console.log(`[POINTS] Deducted ${pointsToDeduct} from balance. New balance: ${txn.total_points - pointsToDeduct}`);
+    }
+
+    return {
+      success: true,
+      sessionId,
+      port,
+      points,
+      durationSeconds,
+      endTime: result.endTime
+    };
+  } catch (error) {
+    console.error('Error activating charging:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to get charging status for all ports
+ipcMain.handle('get-charging-status', async () => {
+  try {
+    const statuses = relayController.getAllRelayStatuses();
+    return { success: true, statuses };
+  } catch (error) {
+    console.error('Error getting charging status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to deactivate/cancel charging
+ipcMain.handle('deactivate-charging', async (event, { port }) => {
+  try {
+    // Validate input
+    if (!port || ![1, 2, 3].includes(port)) {
+      return { success: false, error: 'Invalid port number' };
+    }
+
+    // Check if port is active
+    const portStatus = relayController.getRelayStatus(port);
+    if (!portStatus.active) {
+      return { success: false, error: `Port ${port} is not active` };
+    }
+
+    // Deactivate relay
+    const result = relayController.deactivateRelay(port, false); // false = manual deactivation
+
+    if (!result.success) {
+      return result;
+    }
+
+    // Update charging session status in database
+    db.prepare(`
+      UPDATE charging_sessions 
+      SET status = 'cancelled', end_time = ? 
+      WHERE port = ? AND status = 'active'
+    `).run(new Date().toISOString(), port);
+
+    return {
+      success: true,
+      port,
+      message: 'Charging session cancelled'
+    };
+  } catch (error) {
+    console.error('Error deactivating charging:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler for QR-based redemption
+ipcMain.handle('redeem-points', async (event, { userId, points, timestamp }) => {
+  try {
+    // Validate input
+    if (!userId || !points) {
+      return { success: false, error: 'Invalid redemption data' };
+    }
+    if (points <= 0) {
+      return { success: false, error: 'Points must be greater than 0' };
+    }
+
+    // 1. Online Validation
+    try {
+      const ts = timestamp || Date.now();
+      const stringToSign = `${KIOSK_CODE}${userId}${points}${ts}`;
+      const signature = generateSignature(stringToSign);
+
+      const payload = {
+        kiosk_code: KIOSK_CODE,
+        user_id: userId,
+        points_to_redeem: points,
+        timestamp: ts,
+        signature: signature
+      };
+
+      console.log('[REDEEM] Sending payload:', JSON.stringify(payload));
+
+      const response = await fetch(`${API_BASE_URL}/kiosk/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error('Online redemption failed:', response.status, errText);
+        return { success: false, error: `Redemption Failed: ${response.statusText}` };
+      }
+
+      const remoteResult = await response.json();
+      if (!remoteResult.success) {
+        return { success: false, error: remoteResult.error || 'Server rejected redemption' };
+      }
+
+      // Success online! Proceed to record locally for offline usage/logs
+      // Note: We might trust the backend's new_balance return, or just add points locally as before.
+      // For consistency with current frontend, we add points locally.
+
+    } catch (netErr) {
+      console.error('Network error during redemption:', netErr);
+      // OPTIONAL: Allow offline fallback if policy permits. 
+      // For now, assume STRICT online requirement for redemption security.
+      return { success: false, error: 'Network Error: Cannot validate points online.' };
+    }
+
+    // 2. Local Processing (Legacy/Offline Log)
+    const redemptionId = Date.now().toString();
+    const projectRoot = path.resolve(__dirname, '..');
+    const redemptionsFile = path.join(projectRoot, 'redemptions.json');
+
+    // Create redemption record for JSON file
+    const redemptionRecord = {
+      id: redemptionId,
+      userId: userId,
+      points: points,
+      timestamp: new Date(timestamp).toISOString(),
+      redeemedAt: new Date().toISOString()
+    };
+
+    // Read existing redemptions or create new array
+    let redemptions = [];
+    if (fs.existsSync(redemptionsFile)) {
+      try {
+        const fileContent = fs.readFileSync(redemptionsFile, 'utf-8');
+        redemptions = JSON.parse(fileContent);
+      } catch (err) {
+        console.error('Error reading redemptions.json:', err);
+        redemptions = [];
+      }
+    }
+
+    // Add new redemption
+    redemptions.push(redemptionRecord);
+
+    // Save to JSON file
+    fs.writeFileSync(redemptionsFile, JSON.stringify(redemptions, null, 2));
+    console.log('Redemption saved to redemptions.json:', redemptionRecord);
+
+    // Add points to active transaction
+    let txn = getActiveTransaction();
+    if (!txn) {
+      const id = createTransaction('redeem');
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+    }
+
+    db.prepare('UPDATE transactions SET total_points = total_points + ? WHERE id = ?')
+      .run(points, txn.id);
+
+    // Get updated points
+    txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txn.id);
+
+    return {
+      success: true,
+      redemptionId,
+      newBalance: txn.total_points,
+      pointsAdded: points
+    };
+  } catch (error) {
+    console.error('Error redeeming points:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ============================================
+// FILE WATCHER FOR LIVE UPDATES
+// ============================================
+
+let fileWatcher = null;
+let watcherDebounceTimer = null;
+
+// Helper to emit events to renderer
+function emitToRenderer(channel, data) {
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send(channel, data);
+    console.log(`[EVENT] Emitted ${channel}:`, data);
+  }
+}
+
+// Function to check for new points and emit event
+async function checkAndEmitPointsUpdate() {
+  try {
+    const projectRoot = path.resolve(__dirname, '..');
+    const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
+
+    if (!fs.existsSync(trackedJsonPath)) {
+      console.log('[POINTS CHECK] Tracked_json folder missing');
+      return;
+    }
+
+    // Get active transaction or create one
+    let txn = getActiveTransaction();
+    if (!txn) {
+      const id = createTransaction();
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+    }
+
+    const oldPoints = txn.total_points;
+
+    // Read JSON files
+    const files = fs.readdirSync(trackedJsonPath)
+      .filter(file => file.startsWith('tracked_items_') && file.endsWith('.json'));
+
+    let newPointsAdded = 0;
+
+    for (const file of files) {
+      const filePath = path.join(trackedJsonPath, file);
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const items = JSON.parse(content);
+
+        items.forEach((item, index) => {
+          const exists = db.prepare('SELECT 1 FROM transaction_items WHERE file_name = ? AND file_index = ?').get(file, index);
+
+          if (!exists) {
+            const points = item.points || 0;
+            newPointsAdded += points;
+            console.log(`[POINTS CHECK] New item: ${item.item_type} +${points}pts`);
+
+            db.prepare('INSERT INTO transaction_items (transaction_id, file_name, file_index, item_type, points, date) VALUES (?, ?, ?, ?, ?, ?)')
+              .run(txn.id, file, index, item.item_type || 'unknown', points, item.date || new Date().toISOString());
+          }
+        });
+      } catch (err) {
+        console.error(`Error reading ${file}:`, err);
+      }
+    }
+
+    if (newPointsAdded > 0) {
+      db.prepare('UPDATE transactions SET total_points = total_points + ? WHERE id = ?')
+        .run(newPointsAdded, txn.id);
+      txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txn.id);
+
+      // Emit event to frontend
+      emitToRenderer('points-updated', {
+        points: txn.total_points,
+        pointsAdded: newPointsAdded,
+        transactionId: txn.id
+      });
+
+      console.log(`[POINTS UPDATE] +${newPointsAdded} points added. Total: ${txn.total_points}`);
+    }
+  } catch (error) {
+    console.error('Error checking points update:', error);
+  }
+}
+
+// Initialize file watcher
+function initializeFileWatcher() {
+  const projectRoot = path.resolve(__dirname, '..');
+  const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
+
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(trackedJsonPath)) {
+    fs.mkdirSync(trackedJsonPath, { recursive: true });
+  }
+
+  try {
+    // Watch for changes in Tracked_json folder
+    fileWatcher = fs.watch(trackedJsonPath, { recursive: false }, (eventType, filename) => {
+      if (filename && filename.startsWith('tracked_items_') && filename.endsWith('.json')) {
+        console.log(`[FILE WATCHER] Detected ${eventType} on ${filename}`);
+
+        // Debounce to avoid multiple rapid checks
+        if (watcherDebounceTimer) {
+          clearTimeout(watcherDebounceTimer);
+        }
+
+        watcherDebounceTimer = setTimeout(() => {
+          checkAndEmitPointsUpdate();
+        }, 500); // Wait 500ms after last change
+      }
+    });
+
+    console.log('[FILE WATCHER] Initialized for Tracked_json folder');
+  } catch (error) {
+    console.error('[FILE WATCHER] Failed to initialize:', error);
+  }
+}
+
+// Sync Job (Run periodically)
+setInterval(async () => {
+  // 1. Sync Pending Transactions (Recycling Logs)
+  await syncTransactionLogs().catch(err => console.error('[AUTO-SYNC] Transaction sync failed:', err.message));
+
+  // 2. Sync Pending Vouchers (Old logic, kept for compatibility if needed)
+  const vouchers = db.prepare("SELECT * FROM vouchers WHERE status = 'generated' LIMIT 50").all();
+
+  if (vouchers.length > 0) {
+    console.log(`[AUTO-SYNC] Syncing ${vouchers.length} vouchers...`);
+    try {
+      const txnsPayload = vouchers.map(v => {
+        // Payload is now a JWT string. We need to decode it to get the payload data.
+        // Since we are trusted (server signed it), we can simply decode the payload part.
+        const tokenParts = v.payload.split('.');
+        const payloadBase64 = tokenParts[1];
+        const payloadJson = Buffer.from(payloadBase64, 'base64').toString();
+        const payload = JSON.parse(payloadJson);
+
+        return {
+          txn_id: payload.txn_id,
+          points: payload.points,
+          timestamp: payload.timestamp,
+          signature: payload.signature // Reuse existing valid signature
+        };
+      });
+
+      const response = await fetch(`${API_BASE_URL}/kiosk/vouchers/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kiosk_code: KIOSK_CODE,
+          transactions: txnsPayload
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Sync result:', result);
+        if (result.success) {
+          // Update status
+          const updateStmt = db.prepare("UPDATE vouchers SET status = 'synced' WHERE id = ?");
+          const transaction = db.transaction((ids) => {
+            for (const id of ids) updateStmt.run(id);
+          });
+          transaction(vouchers.map(v => v.id));
+        }
+      } else {
+        console.error('Sync failed:', response.status, await response.text());
+      }
+    } catch (err) {
+      console.error('Sync error (network?):', err.message);
+    }
+  }
+}, 60000); // Check every minute
+
+// ============================================
+// HEARTBEAT JOB (Every 5 seconds for responsive remote commands)
+// ============================================
+setInterval(async () => {
+  try {
+    const statuses = relayController.getAllRelayStatuses();
+    const portsPayload = statuses.map((p, index) => ({
+      port: index + 1,
+      status: p.active ? 'active' : 'idle'
+    }));
+
+    const payload = {
+      kiosk_code: KIOSK_CODE,
+      status: 'online',
+      timestamp: Date.now(), // Backend expects a number
+      ports: portsPayload
+    };
+
+    // Sign the heartbeat request just like sync
+    const payloadString = JSON.stringify(payload);
+    const signature = crypto.createHmac('sha256', KIOSK_SECRET_KEY).update(payloadString).digest('hex');
+
+    const response = await fetch(`${API_BASE_URL}/kiosk/heartbeat`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Kiosk-Signature': signature
+      },
+      body: payloadString
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+
+      if (data && (data.pending_activations?.length > 0 || data.pending_deactivations?.length > 0)) {
+        console.log('[HEARTBEAT] Command received:', JSON.stringify(data));
+      }
+
+      // Handle Remote Activations (Seamless Port Activation)
+      if (data && data.pending_activations && Array.isArray(data.pending_activations)) {
+        for (const activation of data.pending_activations) {
+          const { port, points, duration_seconds } = activation;
+
+          console.log(`[REMOTE ACTIVATION] Received for Port ${port} - ${points} pts`);
+
+          // Only activate if not already active to avoid double activation
+          const currentStatus = statuses[port - 1];
+          if (currentStatus && !currentStatus.active) {
+            const durationSecs = duration_seconds || (points * 60);
+            const activationResult = await relayController.activateRelay(port, durationSecs);
+
+            if (activationResult.success) {
+              console.log(`[REMOTE ACTIVATION] Successfully started Port ${port}`);
+
+              // Record session and transaction
+              recordChargingSession(port, points || 0, durationSecs, activationResult.endTime);
+              // REMOTE activation should NOT deduct from local BIN balance.
+              // It uses points from the CLOUD account. We just log it as 0 for local balance.
+              createTransaction('remote_activation', port, 0);
+
+              // Emit detailed activation event
+              emitToRenderer('remote-activation-started', {
+                port,
+                points: points || 0,
+                durationSeconds: durationSecs,
+                endTime: activationResult.endTime
+              });
+
+              // Emit status change for general UI update
+              emitToRenderer('charging-status-changed', {
+                statuses: relayController.getAllRelayStatuses()
+              });
+            }
+          }
+        }
+      }
+
+      // Handle Remote Deactivations (Cancellations)
+      if (data && data.pending_deactivations && Array.isArray(data.pending_deactivations)) {
+        for (const deactivation of data.pending_deactivations) {
+          const { port } = deactivation;
+          console.log(`[REMOTE DEACTIVATION] Received for Port ${port}`);
+
+          const currentStatus = statuses[port - 1];
+          if (currentStatus && currentStatus.active) {
+            const result = relayController.deactivateRelay(port, false); // false = manual/remote
+            if (result.success) {
+              console.log(`[REMOTE DEACTIVATION] Successfully stopped Port ${port}`);
+
+              // Update charging session status in database
+              db.prepare(`
+                UPDATE charging_sessions 
+                SET status = 'cancelled', end_time = ? 
+                WHERE port = ? AND status = 'active'
+              `).run(new Date().toISOString(), port);
+
+              // Emit event for UI feedback
+              emitToRenderer('remote-deactivation-started', { port });
+
+              // Emit status change for general UI update
+              emitToRenderer('charging-status-changed', {
+                statuses: relayController.getAllRelayStatuses()
+              });
+            }
+          }
+        }
+      }
+    } else {
+      const errorText = await response.text();
+      console.error(`[HEARTBEAT] Failed: ${response.status} ${response.statusText}`, errorText);
+    }
+  } catch (error) {
+    console.error('[HEARTBEAT] Error:', error.message);
+  }
+}, 5000); // 5 seconds
+
+app.whenReady().then(() => {
+  createWindow();
+  // Initialize file watcher after window is created
+  initializeFileWatcher();
+});
 
 app.on('window-all-closed', () => {
+  // Cleanup file watcher
+  if (fileWatcher) {
+    fileWatcher.close();
+    console.log('[FILE WATCHER] Closed');
+  }
+
+  // Cleanup relays before quitting
+  relayController.cleanup();
   if (process.platform !== 'darwin') app.quit();
 });

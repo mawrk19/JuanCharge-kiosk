@@ -1,21 +1,23 @@
-import axios from 'axios';
-import db from '../db/localDB.js';
-
-const apiUrl = 'https://your-laravel-backend.com/api/sync-transactions';
 
 export async function syncTransactions() {
-  const unsynced = db.prepare('SELECT * FROM transactions WHERE synced = 0').all();
-
-  if (unsynced.length === 0) return;
+  if (!window.electronAPI) {
+    console.warn('Sync service: Electron API not available');
+    return;
+  }
 
   try {
-    const response = await axios.post(apiUrl, { transactions: unsynced });
-    if (response.data.status === 'success') {
-      const ids = response.data.synced_ids;
-      const stmt = db.prepare('UPDATE transactions SET synced = 1 WHERE id = ?');
-      ids.forEach(id => stmt.run(id));
+    console.log('Initiating transaction sync...');
+    const result = await window.electronAPI.invoke('sync-transactions');
+    
+    if (result.success) {
+      console.log(`Sync completed successfully. Synced ${result.count || 0} transactions.`);
+      return result;
+    } else {
+      console.error('Sync failed:', result.error, result.details);
+      // throw new Error(result.error); // Optional: rethrow if caller handles it
     }
   } catch (err) {
-    console.error('Sync failed:', err.message);
+    console.error('Sync service error:', err);
   }
 }
+
