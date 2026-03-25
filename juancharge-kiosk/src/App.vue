@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { Zap, Download, Gift, Cable, ArrowLeft, CheckCircle, Activity } from 'lucide-vue-next'
+import { Zap, Download, Gift, Cable, ArrowLeft, CheckCircle } from 'lucide-vue-next'
 import Swal from 'sweetalert2'
 import PointsDisplay from './components/PointsDisplay.vue'
 import StorePointView from './components/StorePointView.vue'
@@ -559,22 +559,6 @@ async function selectPort(portNumber) {
   }
 }
 
-async function simulateCharging(portNumber) {
-  selectedPort.value = portNumber
-  chargingDuration.value = 60 // 1 minute simulation
-  isSimulating.value = true
-  currentView.value = 'charging'
-  
-  Swal.fire({
-    title: 'Simulation Started',
-    text: `Viewing timer UI for Port ${portNumber} (1 minute)`,
-    icon: 'info',
-    timer: 2000,
-    showConfirmButton: false,
-    background: '#ffffff',
-    color: '#0f172a'
-  })
-}
 
 function resetToHome() {
   currentView.value = 'home'
@@ -724,7 +708,7 @@ function isPortDisabled(portNumber) {
             </div>
 
             <aside class="instruction-panel glass-panel">
-              <h2>♻️ Before Inserting</h2>
+              <h3 class="panel-main-title">♻️ Before Inserting</h3>
 
               <ul class="instruction-list">
                 <li>Make sure all bottles and containers are completely empty</li>
@@ -756,9 +740,6 @@ function isPortDisabled(portNumber) {
         <div v-else-if="currentView === 'selectPort'" class="view-container select-port-view" key="selectPort">
           <div class="view-header-with-action">
             <h2 class="view-title">Select Charging Port</h2>
-            <button class="simulate-test-btn glass-panel" @click="simulateCharging(1)">
-              <Activity :size="18" /> Simulate Test
-            </button>
           </div>
           <div class="ports-grid">
             <button 
@@ -903,253 +884,108 @@ function isPortDisabled(portNumber) {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: clamp(10px, 2vh, 18px) clamp(8px, 2vw, 14px);
+  padding: clamp(6px, 1.5vh, 12px);
   position: relative;
   min-height: 0;
   overflow: hidden;
 }
 
+.view-container {
+  width: 100%;
+  height: 100%;
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Center vertically when space is available */
+  gap: clamp(10px, 2.5vh, 20px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: clamp(6px, 1.5vh, 12px);
+}
+
+.home-view {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+}
+
 .home-split {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); /* 60/40 main vs instructions */
-  gap: 10px;
+  grid-template-columns: 1.5fr 1fr;
+  gap: clamp(12px, 2.5vw, 24px);
   width: 100%;
   max-width: 1000px;
   min-height: 0;
-  height: 100%;
-  align-items: flex-start;
+  align-items: center; /* Center left/right columns vertically alongside each other */
 }
 
 .home-main-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: clamp(6px, 1.5vh, 12px);
   min-height: 0;
   max-width: 100%;
 }
 
 .instruction-panel {
-  width: min(72vw, 320px); /* narrower instructions to emphasize main UI */
-  min-width: 220px;
-  max-width: 320px;
-  max-height: calc(100vh - 30px);
-  min-height: 520px; /* larger vertical size, bottom growth for right-side button alignment */
+  width: min(70vw, 300px);
+  min-width: 200px;
+  max-width: 300px;
+  background: #fff9ed;
+  border: 1px solid #facc15;
+  border-radius: 12px;
+  padding: clamp(8px, 2vh, 16px);
+  color: #1f2937;
+  text-align: left;
+  box-shadow: 0 4px 12px rgba(250, 204, 21, 0.15);
+  font-size: clamp(0.85rem, 2.2vh, 1rem);
   overflow-y: auto;
-  align-self: flex-start;
-  margin-top: 0; /* align top with digital balance card */
-  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  min-height: 0;
+  max-height: 100%;
 }
 
-.instruction-panel ul {
-  margin: 0;
-  padding-left: 18px;
-  font-size: clamp(1.1rem, 3.0vh, 1.3rem);
-  line-height: 1.8;
-}
-
-.instruction-panel li {
-  margin-bottom: 10px;
-}
-
-.instruction-panel h3 {
-  font-size: clamp(1.3rem, 3.8vh, 1.6rem);
-  margin-bottom: 12px;
-}
-
-.instruction-panel ul {
-  margin: 0;
-  padding-left: 18px;
-  font-size: clamp(1.1rem, 3.0vh, 1.3rem);
-  line-height: 1.55;
-}
-
-.instruction-panel li {
-  margin-bottom: 6px;
-}
-
-.instruction-panel .accepted-item {
+.panel-main-title {
+  font-size: clamp(1rem, 2.8vh, 1.3rem);
   font-weight: 700;
-  color: #064e3b;
-  margin-left: 4px;
-}
-
-.instruction-panel strong {
-  font-size: clamp(1.05rem, 2.9vh, 1.25rem);
-}
-
-
-.instruction-panel h3 {
-  margin: 0 0 6px;
-  font-size: 0.95rem;
-  font-weight: 700;
+  margin-bottom: clamp(6px, 1.5vh, 10px);
   color: #b91c1c;
 }
 
 .instruction-panel ul {
-  margin: 0;
   padding-left: 16px;
-  font-size: 0.78rem;
-  line-height: 1.3;
+  line-height: 1.45;
+  margin: 0 0 clamp(6px, 1.2vh, 10px);
 }
 
 .instruction-panel li {
+  margin-bottom: clamp(4px, 1vh, 6px);
+}
+
+.section {
+  margin: clamp(6px, 1.2vh, 10px) 0;
+  padding: clamp(6px, 1vh, 8px);
+  background: rgba(17, 153, 142, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(56, 239, 125, 0.2);
+}
+
+.section-title {
+  font-size: clamp(0.8rem, 2vh, 1rem);
+  font-weight: 800;
   margin-bottom: 4px;
-}
-
-.instruction-panel .accepted-item {
-  font-weight: 700;
-  color: #064e3b;
-}
-
-@media (max-width: 900px), (max-height: 540px) {
-  .home-split {
-    grid-template-columns: 1.2fr 1fr;
-    gap: 6px;
-  }
-  .instruction-panel {
-    margin-top: 70px;
-    max-height: calc(100vh - 40px);
-    min-height: 500px;
-    min-width: 210px;
-    font-size: clamp(0.95rem, 2.6vh, 1.05rem);
-  }
-  .action-card {
-    padding: 10px;
-    height: clamp(110px, 24vh, 148px);
-    min-height: 110px;
-  }
-}
-
-.view-container {
-  width: 100%;
-  max-width: 1000px;
-  max-height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(14px, 2.8vh, 30px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 4px;
-}
-
-/* Home View */
-.home-view {
-  margin-top: 0; /* Remove negative adjustment to prevent overlap */
+  color: #0d5a37;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .hero-section {
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: clamp(8px, 2vh, 20px);
-}
-
-.instruction-panel {
-  width: min(70vw, 300px);
-  min-width: 220px;
-  max-width: 300px;
-  background: #fff9ed;
-  border: 1px solid #facc15;
-  border-radius: 10px;
-  padding: 10px 12px;
-  color: #1f2937;
-  text-align: left;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.22);
-  font-size: clamp(0.8rem, 2.3vh, 1rem);
-  min-height: 550px; /* reduced to better match Use/Store button height */
-  max-height: calc(100vh - 20px);
-}
-
-.instruction-panel h3 {
-  font-size: clamp(1.1rem, 2.9vh, 1.3rem);
-  margin-bottom: 10px;
-}
-
-.instruction-panel ul {
-  padding-left: 14px;
-  line-height: 1.5;
-  font-size: clamp(0.9rem, 2.2vh, 1.05rem);
-}
-
-.instruction-panel li {
-  margin-bottom: 8px;
-  margin-left: 4px;
-}
-
-  .instruction-list,
-  .accepted-list {
-    list-style-type: disc;
-    margin: 0 0 10px;
-    padding-left: 20px;
-  }
-
-  .section {
-    margin: 12px 0;
-    padding: 10px;
-    background: rgba(17, 153, 142, 0.08);
-    border-radius: 8px;
-    border: 1px solid rgba(56, 239, 125, 0.3);
-  }
-
-  .section-title {
-    font-size: clamp(0.95rem, 2.3vh, 1.1rem);
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: #0f5132;
-  }
-
-  .instruction-list li,
-  .accepted-list li {
-    margin-bottom: 8px;
-    line-height: 1.45;
-  }
-
-  .instruction-panel .accepted-item {
-    margin-left: 8px;
-    font-weight: 800;
-    color: #064e3b;
-}
-
-.instruction-panel h3 {
-  font-size: clamp(1rem, 2.6vh, 1.2rem);
-}
-
-.instruction-panel ul {
-  padding-left: 16px;
-  line-height: 1.45;
-  font-size: clamp(0.85rem, 2.1vh, 1rem);
-}
-
-.instruction-panel li {
-  margin-bottom: 6px;
-}
-
-.instruction-panel .accepted-item {
-  font-weight: 700;
-  color: #064e3b;
-}
-
-.instruction-panel h3 {
-  margin: 0 0 6px;
-  color: #b91c1c;
-  font-weight: 700;
-  font-size: clamp(0.8rem, 2vh, 1rem);
-}
-
-.instruction-panel ul {
-  margin: 0;
-  padding-left: 18px;
-  line-height: 1.3;
-}
-
-.instruction-panel li {
-  margin-bottom: 4px;
-}
-
-.instruction-panel .accepted-item {
-  font-weight: 700;
-  margin-left: 6px;
+  margin-bottom: clamp(6px, 1.5vh, 16px);
 }
 
 .action-grid {
@@ -1287,34 +1123,12 @@ function isPortDisabled(portNumber) {
 .view-header-with-action {
   width: 100%;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  margin-bottom: 0;
+  margin-bottom: 0px;
   gap: 10px;
 }
 
-.simulate-test-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(17, 153, 142, 0.3);
-  color: var(--primary);
-  border-radius: var(--radius-lg);
-  font-weight: 600;
-  font-size: clamp(0.8rem, 1.7vh, 0.95rem);
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.simulate-test-btn:hover {
-  background: var(--primary);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(17, 153, 142, 0.2);
-}
 
 .port-card-wrapper {
   display: flex;
@@ -1497,6 +1311,30 @@ function isPortDisabled(portNumber) {
     margin-top: 0;
   }
 
+  .home-split {
+    display: grid !important;
+    grid-template-columns: 1.5fr 1fr !important;
+    gap: 12px !important;
+    width: 100%;
+  }
+
+  .instruction-panel {
+    padding: 8px !important;
+    font-size: 0.8rem !important;
+    max-height: calc(100vh - 20px) !important;
+    min-height: 0 !important;
+  }
+  
+  .panel-main-title {
+    font-size: 0.95rem !important;
+    margin-bottom: 6px !important;
+  }
+
+  .section {
+    margin: 6px 0 !important;
+    padding: 6px !important;
+  }
+
   .status-summary {
     padding: 10px;
     margin-bottom: 8px;
@@ -1546,10 +1384,6 @@ function isPortDisabled(portNumber) {
     gap: 6px;
   }
 
-  .simulate-test-btn {
-    font-size: 0.7rem;
-    padding: 4px 9px;
-  }
 
   .ports-grid {
     gap: 10px;

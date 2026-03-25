@@ -381,28 +381,34 @@ onMounted(() => {
 
 @media (max-width: 800px), (max-height: 480px) {
   .points-display-card {
-    padding: 12px;
-    gap: 8px;
+    padding: clamp(8px, 2vh, 14px);
+    gap: clamp(4px, 1.5vh, 10px);
     max-width: 500px;
+    border-radius: 12px;
   }
   
   .points-value {
-    font-size: clamp(2rem, 10vh, 3.4rem);
+    font-size: clamp(1.8rem, 11vh, 3.2rem);
   }
   
   .unit {
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
   
   .time-estimate {
-    font-size: 0.78rem;
-    margin-top: 3px;
-    padding: 4px 10px;
+    font-size: 0.72rem;
+    margin-top: 2px;
+    padding: 3px 10px;
   }
   
   .label {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+
+  .card-footer {
+    padding-top: 6px;
   }
 }
 </style>
