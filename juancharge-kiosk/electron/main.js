@@ -165,11 +165,12 @@ ipcMain.handle('get-latest-points', async () => {
       txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
     }
 
-    // Read JSON files
+    // Read JSON files (all tracked_*.json, including tracked_tracked.json)
     const files = fs.readdirSync(trackedJsonPath)
-      .filter(file => file.startsWith('tracked_items_') && file.endsWith('.json'));
+      .filter(file => file.startsWith('tracked_') && file.endsWith('.json'));
 
     let newPointsAdded = 0;
+    const newRejections = [];
 
     // Check global processed items
     // If file_name + file_index is in transaction_items, it's processed.
@@ -189,9 +190,16 @@ ipcMain.handle('get-latest-points', async () => {
             newPointsAdded += points;
 
             // Handle item_type as array or string
-            const itemType = Array.isArray(item.item_type) 
-              ? item.item_type.join(', ') 
+            const itemType = Array.isArray(item.item_type)
+              ? item.item_type.join(', ')
               : (item.item_type || 'unknown');
+
+            // Track new rejection items for frontend notification.
+            if (item.rejection_reason) {
+              const rejectionReason = `${item.rejection_reason}`.trim();
+              const rejectionType = rejectionReason.split('-')[0].trim();
+              newRejections.push({ file, index, item_type: itemType, points, rejection_reason: rejectionReason, rejection_type: rejectionType });
+            }
 
             db.prepare('INSERT INTO transaction_items (transaction_id, file_name, file_index, item_type, points, date) VALUES (?, ?, ?, ?, ?, ?)')
               .run(txn.id, file, index, itemType, points, item.date || new Date().toISOString());
@@ -212,7 +220,8 @@ ipcMain.handle('get-latest-points', async () => {
       points: txn.total_points,
       transactionId: txn.id,
       itemCount: 0,
-      unusedItemCount: 0
+      unusedItemCount: 0,
+      rejections: newRejections
     };
 
   } catch (error) {
@@ -227,6 +236,47 @@ ipcMain.handle('get-kiosk-config', async () => {
     kiosk_code: KIOSK_CODE,
     api_base_url: API_BASE_URL
   };
+});
+
+// IPC handler for debug: add one rejected item to tracked_tracked.json
+ipcMain.handle('add-debug-rejected-item', async () => {
+  try {
+    const projectRoot = path.resolve(__dirname, '..');
+    const trackedJsonPath = path.join(projectRoot, 'Tracked_json');
+    const targetFile = path.join(trackedJsonPath, 'tracked_tracked.json');
+
+    if (!fs.existsSync(trackedJsonPath)) {
+      fs.mkdirSync(trackedJsonPath, { recursive: true });
+    }
+
+    let entries = [];
+    if (fs.existsSync(targetFile)) {
+      const current = fs.readFileSync(targetFile, 'utf-8');
+      try {
+        const parsed = JSON.parse(current);
+        if (Array.isArray(parsed)) entries = parsed;
+      } catch (err) {
+        console.warn('Could not parse existing tracked_tracked.json, overwriting with fresh array', err.message);
+        entries = [];
+      }
+    }
+
+    const now = new Date().toISOString();
+    const rejectedItem = {
+      date: now,
+      item_type: 'glass bottle',
+      points: 0,
+      rejection_reason: 'Invalid item - not part of accepted categories'
+    };
+
+    entries.push(rejectedItem);
+    fs.writeFileSync(targetFile, JSON.stringify(entries, null, 2), 'utf-8');
+
+    return { success: true, inserted: rejectedItem };
+  } catch (error) {
+    console.error('Error in add-debug-rejected-item:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 // IPC handler to generate signed voucher (JWT)

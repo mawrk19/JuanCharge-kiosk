@@ -669,55 +669,86 @@ function isPortDisabled(portNumber) {
       <Transition name="fade" mode="out-in">
         <!-- Home View -->
         <div v-if="currentView === 'home'" class="view-container home-view" key="home">
-          <!-- Hero / Points Section -->
-          <div class="hero-section">
-            <PointsDisplay ref="pointsDisplayRef" />
-          </div>
-          
-          <!-- Quick Status Check (Only if active sessions exist) -->
-          <div v-if="portStatuses.some(p => p && p.active)" class="status-summary glass-panel">
-            <h3 class="section-label">Active Port Status</h3>
-            <div class="mini-status-grid">
-              <div 
-                v-for="status in portStatuses.filter(p => p && p.active)" 
-                :key="status.port" 
-                class="mini-status-item"
-              >
-                <div class="port-id">Port {{ status.port }}</div>
-                <div class="port-timer">{{ formatTime(status.remainingSeconds) }}</div>
+          <div class="home-split">
+            <div class="home-main-panel">
+              <!-- Hero / Points Section -->
+              <div class="hero-section">
+                <PointsDisplay ref="pointsDisplayRef" />
+              </div>
+
+              <!-- Quick Status Check (Only if active sessions exist) -->
+              <div v-if="portStatuses.some(p => p && p.active)" class="status-summary glass-panel">
+                <h3 class="section-label">Active Port Status</h3>
+                <div class="mini-status-grid">
+                  <div 
+                    v-for="status in portStatuses.filter(p => p && p.active)" 
+                    :key="status.port" 
+                    class="mini-status-item"
+                  >
+                    <div class="port-id">Port {{ status.port }}</div>
+                    <div class="port-timer">{{ formatTime(status.remainingSeconds) }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Primary Actions -->
+              <div :class="['action-grid', { 'three-cols': isDevMode }]">
+                <button class="action-card primary glass-panel" @click="goToUseNow">
+                  <div class="icon-wrapper"><Zap :size="48" /></div>
+                  <div class="card-content">
+                    <span class="card-title">Use Points</span>
+                    <span class="card-desc">Start Charging</span>
+                  </div>
+                </button>
+                
+                <button 
+                  class="action-card secondary glass-panel" 
+                  @click="goToStorePoint"
+                  :disabled="currentPoints <= 0"
+                >
+                  <div class="icon-wrapper"><Download :size="48" /></div>
+                  <div class="card-content">
+                    <span class="card-title">Store Points</span>
+                    <span class="card-desc">Save for later</span>
+                  </div>
+                </button>
+
+                <button v-if="isDevMode" class="action-card tertiary glass-panel" @click="goToRedeem">
+                  <div class="icon-wrapper"><Gift :size="48" /></div>
+                  <div class="card-content">
+                    <span class="card-title">Redeem</span>
+                    <span class="card-desc">Manual Entry</span>
+                  </div>
+                </button>
               </div>
             </div>
-          </div>
-          
-          <!-- Primary Actions -->
-          <div :class="['action-grid', { 'three-cols': isDevMode }]">
-            <button class="action-card primary glass-panel" @click="goToUseNow">
-              <div class="icon-wrapper"><Zap :size="48" /></div>
-              <div class="card-content">
-                <span class="card-title">Use Points</span>
-                <span class="card-desc">Start Charging</span>
-              </div>
-            </button>
-            
-            <button 
-              class="action-card secondary glass-panel" 
-              @click="goToStorePoint"
-              :disabled="currentPoints <= 0"
-            >
-              <div class="icon-wrapper"><Download :size="48" /></div>
-              <div class="card-content">
-                <span class="card-title">Store Points</span>
-                <span class="card-desc">Save for later</span>
-              </div>
-            </button>
 
-            <button v-if="isDevMode" class="action-card tertiary glass-panel" @click="goToRedeem">
-              <div class="icon-wrapper"><Gift :size="48" /></div>
-              <div class="card-content">
-                <span class="card-title">Redeem</span>
-                <span class="card-desc">Manual Entry</span>
+            <aside class="instruction-panel glass-panel">
+              <h2>♻️ Before Inserting</h2>
+
+              <ul class="instruction-list">
+                <li>Make sure all bottles and containers are completely empty</li>
+                <li>Remove any leftover contents such as liquids, trash, or residue</li>
+              </ul>
+
+              <div class="section">
+                <p class="section-title">Accepted Items Only</p>
+                <ul class="accepted-list">
+                  <li>PET plastic bottles</li>
+                  <li>Tin cans</li>
+                  <li>Aluminum cans</li>
+                </ul>
               </div>
-            </button>
+
+              <div class="section">
+                <p class="section-title">How to Insert</p>
+                <ul class="instruction-list">
+                  <li>Insert only one item at a time</li>
+                  <li>Place the item properly into the slot</li>
+                  <li>Wait for the system to process before inserting the next item</li>
+                </ul>
+              </div>
+            </aside>
           </div>
         </div>
         
@@ -872,10 +903,121 @@ function isPortDisabled(portNumber) {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: clamp(14px, 3.2vh, 26px) clamp(10px, 2.5vw, 20px);
+  padding: clamp(10px, 2vh, 18px) clamp(8px, 2vw, 14px);
   position: relative;
   min-height: 0;
   overflow: hidden;
+}
+
+.home-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); /* 60/40 main vs instructions */
+  gap: 10px;
+  width: 100%;
+  max-width: 1000px;
+  min-height: 0;
+  height: 100%;
+  align-items: flex-start;
+}
+
+.home-main-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  max-width: 100%;
+}
+
+.instruction-panel {
+  width: min(72vw, 320px); /* narrower instructions to emphasize main UI */
+  min-width: 220px;
+  max-width: 320px;
+  max-height: calc(100vh - 30px);
+  min-height: 520px; /* larger vertical size, bottom growth for right-side button alignment */
+  overflow-y: auto;
+  align-self: flex-start;
+  margin-top: 0; /* align top with digital balance card */
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+
+.instruction-panel ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: clamp(1.1rem, 3.0vh, 1.3rem);
+  line-height: 1.8;
+}
+
+.instruction-panel li {
+  margin-bottom: 10px;
+}
+
+.instruction-panel h3 {
+  font-size: clamp(1.3rem, 3.8vh, 1.6rem);
+  margin-bottom: 12px;
+}
+
+.instruction-panel ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: clamp(1.1rem, 3.0vh, 1.3rem);
+  line-height: 1.55;
+}
+
+.instruction-panel li {
+  margin-bottom: 6px;
+}
+
+.instruction-panel .accepted-item {
+  font-weight: 700;
+  color: #064e3b;
+  margin-left: 4px;
+}
+
+.instruction-panel strong {
+  font-size: clamp(1.05rem, 2.9vh, 1.25rem);
+}
+
+
+.instruction-panel h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.instruction-panel ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.instruction-panel li {
+  margin-bottom: 4px;
+}
+
+.instruction-panel .accepted-item {
+  font-weight: 700;
+  color: #064e3b;
+}
+
+@media (max-width: 900px), (max-height: 540px) {
+  .home-split {
+    grid-template-columns: 1.2fr 1fr;
+    gap: 6px;
+  }
+  .instruction-panel {
+    margin-top: 70px;
+    max-height: calc(100vh - 40px);
+    min-height: 500px;
+    min-width: 210px;
+    font-size: clamp(0.95rem, 2.6vh, 1.05rem);
+  }
+  .action-card {
+    padding: 10px;
+    height: clamp(110px, 24vh, 148px);
+    min-height: 110px;
+  }
 }
 
 .view-container {
@@ -901,6 +1043,113 @@ function isPortDisabled(portNumber) {
   display: flex;
   justify-content: center;
   margin-bottom: clamp(8px, 2vh, 20px);
+}
+
+.instruction-panel {
+  width: min(70vw, 300px);
+  min-width: 220px;
+  max-width: 300px;
+  background: #fff9ed;
+  border: 1px solid #facc15;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #1f2937;
+  text-align: left;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.22);
+  font-size: clamp(0.8rem, 2.3vh, 1rem);
+  min-height: 550px; /* reduced to better match Use/Store button height */
+  max-height: calc(100vh - 20px);
+}
+
+.instruction-panel h3 {
+  font-size: clamp(1.1rem, 2.9vh, 1.3rem);
+  margin-bottom: 10px;
+}
+
+.instruction-panel ul {
+  padding-left: 14px;
+  line-height: 1.5;
+  font-size: clamp(0.9rem, 2.2vh, 1.05rem);
+}
+
+.instruction-panel li {
+  margin-bottom: 8px;
+  margin-left: 4px;
+}
+
+  .instruction-list,
+  .accepted-list {
+    list-style-type: disc;
+    margin: 0 0 10px;
+    padding-left: 20px;
+  }
+
+  .section {
+    margin: 12px 0;
+    padding: 10px;
+    background: rgba(17, 153, 142, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(56, 239, 125, 0.3);
+  }
+
+  .section-title {
+    font-size: clamp(0.95rem, 2.3vh, 1.1rem);
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #0f5132;
+  }
+
+  .instruction-list li,
+  .accepted-list li {
+    margin-bottom: 8px;
+    line-height: 1.45;
+  }
+
+  .instruction-panel .accepted-item {
+    margin-left: 8px;
+    font-weight: 800;
+    color: #064e3b;
+}
+
+.instruction-panel h3 {
+  font-size: clamp(1rem, 2.6vh, 1.2rem);
+}
+
+.instruction-panel ul {
+  padding-left: 16px;
+  line-height: 1.45;
+  font-size: clamp(0.85rem, 2.1vh, 1rem);
+}
+
+.instruction-panel li {
+  margin-bottom: 6px;
+}
+
+.instruction-panel .accepted-item {
+  font-weight: 700;
+  color: #064e3b;
+}
+
+.instruction-panel h3 {
+  margin: 0 0 6px;
+  color: #b91c1c;
+  font-weight: 700;
+  font-size: clamp(0.8rem, 2vh, 1rem);
+}
+
+.instruction-panel ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.3;
+}
+
+.instruction-panel li {
+  margin-bottom: 4px;
+}
+
+.instruction-panel .accepted-item {
+  font-weight: 700;
+  margin-left: 6px;
 }
 
 .action-grid {
